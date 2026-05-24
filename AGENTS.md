@@ -340,10 +340,9 @@ For font installation, color-scheme changes, light/dark theming, or the `isolate
 2. **Build/compile** (required)
 3. **Lint** (recommended; fix anything critical)
 4. **Run tests** (if available)
-5. **Git commit** (required)
 
 ### Using Git
 
-Use `git status` / `git diff` to review changes and `git log` to learn project conventions. If you make a mistake, `git checkout` restores files.
+Use `git status` / `git diff` to review changes and `git log` to learn project conventions when helpful. If you make a mistake, `git checkout` restores files.
 
-**Always commit when you are finished.** Non-negotiable — every completed task ends with a commit. Don't wait for the user to ask.
+**Do not commit or push unless the user explicitly asks.** The user owns the git history — leave changes unstaged or staged in the working tree and let them commit and push when they are ready. If they ask you to commit, follow their instructions; otherwise never run `git commit` or `git push`.
