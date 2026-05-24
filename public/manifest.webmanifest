@@ -1,0 +1,10 @@
+{
+  "name": "Nostr Weather",
+  "short_name": "Weather",
+  "description": "Decentralized weather station network powered by Nostr",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000814",
+  "theme_color": "#00ff88",
+  "icons": []
+}
