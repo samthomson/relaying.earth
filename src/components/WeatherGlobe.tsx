@@ -51,58 +51,147 @@ export function WeatherGlobe({ stations, onStationClick }: WeatherGlobeProps) {
     mountRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    // Lighting - sun from the right side
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(5, 3, 5);
-    scene.add(directionalLight);
+    const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    sunLight.position.set(5, 2, 3);
+    scene.add(sunLight);
 
-    // Create Earth
-    const earthGeometry = new THREE.SphereGeometry(2, 64, 64);
+    // Create Earth with realistic textures
+    const earthGeometry = new THREE.SphereGeometry(2, 128, 128);
+    
+    // Earth texture loader
+    const textureLoader = new THREE.TextureLoader();
+    
+    // Create procedural Earth texture (blue oceans, green/brown land)
+    const textureCanvas = document.createElement('canvas');
+    textureCanvas.width = 2048;
+    textureCanvas.height = 1024;
+    const ctx = textureCanvas.getContext('2d')!;
+    
+    // Base ocean color
+    ctx.fillStyle = '#1a4d7a';
+    ctx.fillRect(0, 0, textureCanvas.width, textureCanvas.height);
+    
+    // Add some continents (simplified procedural land masses)
+    ctx.fillStyle = '#2d5016';
+    
+    // North America
+    ctx.beginPath();
+    ctx.ellipse(350, 300, 150, 180, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // South America
+    ctx.beginPath();
+    ctx.ellipse(420, 580, 80, 140, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Europe/Africa
+    ctx.beginPath();
+    ctx.ellipse(1000, 320, 120, 150, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(1050, 550, 140, 200, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Asia
+    ctx.beginPath();
+    ctx.ellipse(1400, 300, 280, 160, 0.15, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Australia
+    ctx.beginPath();
+    ctx.ellipse(1550, 680, 90, 70, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Add some noise/detail
+    for (let i = 0; i < 5000; i++) {
+      const x = Math.random() * textureCanvas.width;
+      const y = Math.random() * textureCanvas.height;
+      const radius = Math.random() * 3 + 1;
+      ctx.fillStyle = Math.random() > 0.5 ? '#3a6b28' : '#1a3d5a';
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    const earthTexture = new THREE.CanvasTexture(textureCanvas);
+    
     const earthMaterial = new THREE.MeshPhongMaterial({
-      color: 0x2a4a7f,
-      emissive: 0x112244,
-      shininess: 10,
-      transparent: true,
-      opacity: 0.95,
+      map: earthTexture,
+      bumpScale: 0.05,
+      specular: new THREE.Color(0x333333),
+      shininess: 15,
     });
+    
     const earth = new THREE.Mesh(earthGeometry, earthMaterial);
     scene.add(earth);
     earthRef.current = earth;
 
-    // Add grid lines for better visual
-    const gridHelper = new THREE.PolarGridHelper(2, 16, 8, 64, 0x4a6fa5, 0x2a4a7f);
-    gridHelper.position.y = 0;
-    earth.add(gridHelper);
+    // Add atmosphere glow
+    const atmosphereGeometry = new THREE.SphereGeometry(2.1, 64, 64);
+    const atmosphereMaterial = new THREE.ShaderMaterial({
+      vertexShader: `
+        varying vec3 vNormal;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vNormal;
+        void main() {
+          float intensity = pow(0.7 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
+          gl_FragColor = vec4(0.3, 0.6, 1.0, 1.0) * intensity;
+        }
+      `,
+      blending: THREE.AdditiveBlending,
+      side: THREE.BackSide,
+      transparent: true,
+    });
+    const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+    scene.add(atmosphere);
 
     // Create station markers group
     const stationGroup = new THREE.Group();
     scene.add(stationGroup);
     stationMarkersRef.current = stationGroup;
 
-    // Stars background
+    // Stars background with varied sizes
     const starsGeometry = new THREE.BufferGeometry();
-    const starsMaterial = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 0.02,
-      transparent: true,
-      opacity: 0.8,
-    });
-
     const starsVertices = [];
-    for (let i = 0; i < 3000; i++) {
-      const x = (Math.random() - 0.5) * 50;
-      const y = (Math.random() - 0.5) * 50;
-      const z = (Math.random() - 0.5) * 50;
+    const starsSizes = [];
+    
+    for (let i = 0; i < 5000; i++) {
+      const x = (Math.random() - 0.5) * 100;
+      const y = (Math.random() - 0.5) * 100;
+      const z = (Math.random() - 0.5) * 100;
       starsVertices.push(x, y, z);
+      
+      // Varied star sizes
+      starsSizes.push(Math.random() * 2 + 0.5);
     }
 
     starsGeometry.setAttribute(
       'position',
       new THREE.Float32BufferAttribute(starsVertices, 3)
     );
+    starsGeometry.setAttribute(
+      'size',
+      new THREE.Float32BufferAttribute(starsSizes, 1)
+    );
+    
+    const starsMaterial = new THREE.PointsMaterial({
+      color: 0xffffff,
+      size: 0.1,
+      transparent: true,
+      opacity: 0.9,
+      sizeAttenuation: true,
+      vertexColors: false,
+    });
+    
     const stars = new THREE.Points(starsGeometry, starsMaterial);
     scene.add(stars);
 
@@ -278,12 +367,11 @@ export function WeatherGlobe({ stations, onStationClick }: WeatherGlobeProps) {
       const y = radius * Math.sin(latRad);
       const z = radius * Math.cos(latRad) * Math.sin(lngRad);
 
-      // Create marker
-      const markerGeometry = new THREE.SphereGeometry(0.02, 16, 16);
+      // Create marker - brighter and more visible
+      const markerGeometry = new THREE.SphereGeometry(0.025, 16, 16);
       const markerMaterial = new THREE.MeshBasicMaterial({
-        color: 0x00ff88,
-        emissive: 0x00ff88,
-        emissiveIntensity: 0.5,
+        color: 0xffaa00, // Orange/yellow color for better visibility
+        transparent: false,
       });
       const marker = new THREE.Mesh(markerGeometry, markerMaterial);
       marker.position.set(x, y, z);
@@ -291,16 +379,35 @@ export function WeatherGlobe({ stations, onStationClick }: WeatherGlobeProps) {
 
       stationMarkersRef.current?.add(marker);
 
-      // Add glow effect
-      const glowGeometry = new THREE.SphereGeometry(0.03, 16, 16);
+      // Add pulsing glow ring
+      const glowGeometry = new THREE.SphereGeometry(0.04, 16, 16);
       const glowMaterial = new THREE.MeshBasicMaterial({
-        color: 0x00ff88,
+        color: 0xffaa00,
         transparent: true,
-        opacity: 0.3,
+        opacity: 0.4,
       });
       const glow = new THREE.Mesh(glowGeometry, glowMaterial);
       glow.position.set(x, y, z);
       stationMarkersRef.current?.add(glow);
+      
+      // Add vertical beam of light
+      const beamGeometry = new THREE.CylinderGeometry(0.005, 0.005, 0.3, 8);
+      const beamMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffaa00,
+        transparent: true,
+        opacity: 0.6,
+      });
+      const beam = new THREE.Mesh(beamGeometry, beamMaterial);
+      
+      // Orient beam from surface outward
+      const direction = new THREE.Vector3(x, y, z).normalize();
+      beam.position.set(x, y, z);
+      beam.position.addScaledVector(direction, 0.15);
+      beam.quaternion.setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0),
+        direction
+      );
+      stationMarkersRef.current?.add(beam);
     });
   }, [stations]);
 
@@ -311,27 +418,27 @@ export function WeatherGlobe({ stations, onStationClick }: WeatherGlobeProps) {
       {/* Tooltip */}
       {hoveredStation && tooltipPosition && (
         <div
-          className="absolute z-50 bg-black/90 text-white px-3 py-2 rounded-lg text-sm pointer-events-none border border-green-500/30 backdrop-blur-sm"
+          className="absolute z-50 bg-black/95 text-white px-4 py-3 rounded-lg text-sm pointer-events-none border border-orange-500/50 backdrop-blur-md shadow-xl shadow-orange-500/20"
           style={{
-            left: tooltipPosition.x + 10,
-            top: tooltipPosition.y + 10,
+            left: tooltipPosition.x + 15,
+            top: tooltipPosition.y + 15,
           }}
         >
-          <div className="font-semibold">{hoveredStation.name || 'Unnamed Station'}</div>
+          <div className="font-bold text-orange-400">{hoveredStation.name || 'Unnamed Station'}</div>
           {hoveredStation.description && (
-            <div className="text-gray-400 text-xs mt-0.5">{hoveredStation.description}</div>
+            <div className="text-gray-300 text-xs mt-1">{hoveredStation.description}</div>
           )}
           {hoveredStation.geohash && (
-            <div className="text-gray-500 text-xs mt-1">📍 {hoveredStation.geohash}</div>
+            <div className="text-gray-400 text-xs mt-1.5 font-mono">📍 {hoveredStation.geohash}</div>
           )}
         </div>
       )}
 
       {/* Legend */}
-      <div className="absolute top-4 left-4 bg-black/80 backdrop-blur-sm border border-green-500/30 rounded-lg p-4 text-white">
+      <div className="absolute top-4 left-4 bg-black/90 backdrop-blur-sm border border-orange-500/30 rounded-lg p-4 text-white shadow-xl">
         <h3 className="text-sm font-semibold mb-2">Weather Stations</h3>
         <div className="flex items-center gap-2 text-xs">
-          <div className="w-3 h-3 rounded-full bg-green-500" />
+          <div className="w-3 h-3 rounded-full bg-orange-500 shadow-lg shadow-orange-500/50" />
           <span>{stations.length} active stations</span>
         </div>
         <div className="mt-3 text-xs text-gray-400">
