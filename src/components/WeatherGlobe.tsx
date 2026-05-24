@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import * as THREE from 'three';
+import { geoOrthographic, geoPath, geoGraticule } from 'd3-geo';
+import { select } from 'd3-selection';
+import { drag } from 'd3-drag';
 import type { WeatherStationMetadata } from '@/lib/weatherUtils';
 
 interface WeatherGlobeProps {
@@ -8,341 +10,193 @@ interface WeatherGlobeProps {
 }
 
 export function WeatherGlobe({ stations, onStationClick }: WeatherGlobeProps) {
-  const mountRef = useRef<HTMLDivElement>(null);
-  const sceneRef = useRef<THREE.Scene | null>(null);
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-  const earthRef = useRef<THREE.Mesh | null>(null);
-  const stationMarkersRef = useRef<THREE.Group | null>(null);
-  const frameRef = useRef<number | null>(null);
-  
-  const mouseRef = useRef({ x: 0, y: 0 });
-  const isDragging = useRef(false);
-  const previousMouse = useRef({ x: 0, y: 0 });
-  const autoRotate = useRef(true);
-  const inactivityTimer = useRef<NodeJS.Timeout | null>(null);
-
+  const svgRef = useRef<SVGSVGElement>(null);
   const [hoveredStation, setHoveredStation] = useState<WeatherStationMetadata | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
+  const rotationRef = useRef({ x: 0, y: 0 });
+  const autoRotateRef = useRef(true);
+  const animationFrameRef = useRef<number | null>(null);
 
-  // Initialize Three.js scene
   useEffect(() => {
-    if (!mountRef.current) return;
+    if (!svgRef.current) return;
 
-    // Scene setup
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000814);
-    sceneRef.current = scene;
+    const width = window.innerWidth;
+    const height = window.innerHeight - 57; // Account for navbar
+    const radius = Math.min(width, height) / 2.5;
 
-    // Camera setup
-    const camera = new THREE.PerspectiveCamera(
-      45,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      1000
-    );
-    camera.position.z = 4;
-    cameraRef.current = camera;
+    const svg = select(svgRef.current);
+    svg.selectAll('*').remove();
 
-    // Renderer setup
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    mountRef.current.appendChild(renderer.domElement);
-    rendererRef.current = renderer;
+    // Create projection
+    const projection = geoOrthographic()
+      .scale(radius)
+      .translate([width / 2, height / 2])
+      .clipAngle(90);
 
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-    scene.add(ambientLight);
+    const path = geoPath().projection(projection);
+    const graticule = geoGraticule();
 
-    const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
-    sunLight.position.set(5, 3, 5);
-    scene.add(sunLight);
+    // Create globe background (water)
+    const globe = svg
+      .append('circle')
+      .attr('cx', width / 2)
+      .attr('cy', height / 2)
+      .attr('r', radius)
+      .attr('fill', '#0a1929')
+      .attr('stroke', '#1e3a5f')
+      .attr('stroke-width', 2);
 
-    // Create Earth sphere
-    const earthGeometry = new THREE.SphereGeometry(2, 64, 64);
-    const textureLoader = new THREE.TextureLoader();
-    
-    // Use NASA Blue Marble texture
-    const earthTexture = textureLoader.load(
-      'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg',
-      () => {
-        // Texture loaded successfully
-      },
-      undefined,
-      () => {
-        // Fallback to a solid color if texture fails to load
-        console.warn('Failed to load Earth texture, using fallback');
-      }
-    );
-    
-    const earthMaterial = new THREE.MeshPhongMaterial({
-      map: earthTexture,
-      shininess: 5,
-      specular: new THREE.Color(0x222222),
-    });
-    
-    const earth = new THREE.Mesh(earthGeometry, earthMaterial);
-    scene.add(earth);
-    earthRef.current = earth;
+    // Add graticule (latitude/longitude lines)
+    svg
+      .append('path')
+      .datum(graticule)
+      .attr('class', 'graticule')
+      .attr('d', path as any)
+      .attr('fill', 'none')
+      .attr('stroke', '#1e3a5f')
+      .attr('stroke-width', 0.5)
+      .attr('opacity', 0.3);
 
-    // Add subtle atmosphere glow
-    const atmosphereGeometry = new THREE.SphereGeometry(2.05, 64, 64);
-    const atmosphereMaterial = new THREE.ShaderMaterial({
-      vertexShader: `
-        varying vec3 vNormal;
-        void main() {
-          vNormal = normalize(normalMatrix * normal);
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        varying vec3 vNormal;
-        void main() {
-          float intensity = pow(0.6 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
-          gl_FragColor = vec4(0.3, 0.5, 1.0, 0.7) * intensity;
-        }
-      `,
-      blending: THREE.AdditiveBlending,
-      side: THREE.BackSide,
-      transparent: true,
-    });
-    const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
-    scene.add(atmosphere);
+    // Load and render world map
+    fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+      .then((response) => response.json())
+      .then((world) => {
+        const countries = (window as any).topojson.feature(world, world.objects.countries);
 
-    // Create station markers group
-    const stationGroup = new THREE.Group();
-    scene.add(stationGroup);
-    stationMarkersRef.current = stationGroup;
+        svg
+          .selectAll('.country')
+          .data(countries.features)
+          .enter()
+          .append('path')
+          .attr('class', 'country')
+          .attr('d', path as any)
+          .attr('fill', '#1a4d2e')
+          .attr('stroke', '#0f2818')
+          .attr('stroke-width', 0.5);
 
-    // Simple stars background
-    const starsGeometry = new THREE.BufferGeometry();
-    const starsVertices = [];
-    
-    for (let i = 0; i < 2000; i++) {
-      const x = (Math.random() - 0.5) * 80;
-      const y = (Math.random() - 0.5) * 80;
-      const z = (Math.random() - 0.5) * 80;
-      starsVertices.push(x, y, z);
+        // Add stations after map loads
+        renderStations();
+      })
+      .catch(() => {
+        // Fallback: render stations even if map fails
+        renderStations();
+      });
+
+    function renderStations() {
+      const stationGroup = svg.append('g').attr('class', 'stations');
+
+      stations.forEach((station) => {
+        if (station.lat === undefined || station.lng === undefined) return;
+
+        const coords = projection([station.lng, station.lat]);
+        if (!coords) return;
+
+        // Check if station is visible (on front of globe)
+        const distance = Math.acos(
+          Math.sin(station.lat * (Math.PI / 180)) * Math.sin(projection.rotate()[1] * (Math.PI / 180)) +
+            Math.cos(station.lat * (Math.PI / 180)) *
+              Math.cos(projection.rotate()[1] * (Math.PI / 180)) *
+              Math.cos((station.lng - projection.rotate()[0]) * (Math.PI / 180))
+        );
+        const isVisible = distance < Math.PI / 2;
+
+        if (!isVisible) return;
+
+        // Glow circle
+        stationGroup
+          .append('circle')
+          .attr('cx', coords[0])
+          .attr('cy', coords[1])
+          .attr('r', 8)
+          .attr('fill', '#ff3333')
+          .attr('opacity', 0.2)
+          .attr('class', 'station-glow');
+
+        // Main marker
+        stationGroup
+          .append('circle')
+          .attr('cx', coords[0])
+          .attr('cy', coords[1])
+          .attr('r', 4)
+          .attr('fill', '#ff3333')
+          .attr('stroke', '#ffffff')
+          .attr('stroke-width', 1)
+          .attr('opacity', 0.9)
+          .attr('class', 'station-marker')
+          .style('cursor', 'pointer')
+          .on('mouseenter', (event) => {
+            setHoveredStation(station);
+            setTooltipPosition({ x: event.clientX, y: event.clientY });
+          })
+          .on('mouseleave', () => {
+            setHoveredStation(null);
+            setTooltipPosition(null);
+          })
+          .on('click', () => {
+            onStationClick?.(station);
+          });
+      });
     }
 
-    starsGeometry.setAttribute(
-      'position',
-      new THREE.Float32BufferAttribute(starsVertices, 3)
-    );
-    
-    const starsMaterial = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 0.7,
-      transparent: true,
-      opacity: 0.6,
-    });
-    
-    const stars = new THREE.Points(starsGeometry, starsMaterial);
-    scene.add(stars);
-
-    // Animation loop
-    const animate = () => {
-      frameRef.current = requestAnimationFrame(animate);
-
-      // Auto-rotate when not interacting
-      if (autoRotate.current && earthRef.current) {
-        earthRef.current.rotation.y += 0.001;
+    // Rotation function
+    function rotate() {
+      if (autoRotateRef.current) {
+        rotationRef.current.x += 0.1;
       }
 
-      renderer.render(scene, camera);
-    };
-    animate();
+      projection.rotate([rotationRef.current.x, -rotationRef.current.y]);
+
+      svg.selectAll('.graticule').attr('d', path as any);
+      svg.selectAll('.country').attr('d', path as any);
+
+      // Re-render stations
+      svg.selectAll('.stations').remove();
+      renderStations();
+
+      animationFrameRef.current = requestAnimationFrame(rotate);
+    }
+
+    // Start auto-rotation
+    rotate();
+
+    // Drag behavior
+    const dragBehavior = drag()
+      .on('start', () => {
+        autoRotateRef.current = false;
+      })
+      .on('drag', (event) => {
+        rotationRef.current.x += event.dx * 0.5;
+        rotationRef.current.y += event.dy * 0.5;
+        rotationRef.current.y = Math.max(-90, Math.min(90, rotationRef.current.y));
+      })
+      .on('end', () => {
+        setTimeout(() => {
+          autoRotateRef.current = true;
+        }, 2000);
+      });
+
+    svg.call(dragBehavior as any);
 
     // Handle window resize
     const handleResize = () => {
-      if (!cameraRef.current || !rendererRef.current) return;
-      cameraRef.current.aspect = window.innerWidth / window.innerHeight;
-      cameraRef.current.updateProjectionMatrix();
-      rendererRef.current.setSize(window.innerWidth, window.innerHeight);
+      // Re-render on resize
+      window.location.reload();
     };
     window.addEventListener('resize', handleResize);
 
-    // Mouse interaction handlers
-    const handleMouseDown = (event: MouseEvent) => {
-      isDragging.current = true;
-      previousMouse.current = { x: event.clientX, y: event.clientY };
-      autoRotate.current = false;
-
-      // Clear inactivity timer
-      if (inactivityTimer.current) {
-        clearTimeout(inactivityTimer.current);
-      }
-    };
-
-    const handleMouseMove = (event: MouseEvent) => {
-      mouseRef.current = { x: event.clientX, y: event.clientY };
-
-      if (isDragging.current && earthRef.current) {
-        const deltaX = event.clientX - previousMouse.current.x;
-        const deltaY = event.clientY - previousMouse.current.y;
-
-        earthRef.current.rotation.y += deltaX * 0.005;
-        earthRef.current.rotation.x += deltaY * 0.005;
-
-        // Clamp X rotation to prevent flipping
-        earthRef.current.rotation.x = Math.max(
-          -Math.PI / 2,
-          Math.min(Math.PI / 2, earthRef.current.rotation.x)
-        );
-
-        previousMouse.current = { x: event.clientX, y: event.clientY };
-      }
-
-      // Check for station hover
-      if (cameraRef.current && stationMarkersRef.current) {
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2(
-          (event.clientX / window.innerWidth) * 2 - 1,
-          -(event.clientY / window.innerHeight) * 2 + 1
-        );
-        raycaster.setFromCamera(mouse, cameraRef.current);
-
-        const intersects = raycaster.intersectObjects(stationMarkersRef.current.children);
-        if (intersects.length > 0) {
-          const marker = intersects[0].object;
-          const station = (marker as THREE.Mesh & { userData: { station: WeatherStationMetadata } }).userData
-            .station;
-          setHoveredStation(station);
-          setTooltipPosition({ x: event.clientX, y: event.clientY });
-        } else {
-          setHoveredStation(null);
-          setTooltipPosition(null);
-        }
-      }
-    };
-
-    const handleMouseUp = () => {
-      isDragging.current = false;
-
-      // Start inactivity timer to resume auto-rotation
-      inactivityTimer.current = setTimeout(() => {
-        autoRotate.current = true;
-      }, 3000);
-    };
-
-    const handleClick = (event: MouseEvent) => {
-      if (!cameraRef.current || !stationMarkersRef.current) return;
-
-      const raycaster = new THREE.Raycaster();
-      const mouse = new THREE.Vector2(
-        (event.clientX / window.innerWidth) * 2 - 1,
-        -(event.clientY / window.innerHeight) * 2 + 1
-      );
-      raycaster.setFromCamera(mouse, cameraRef.current);
-
-      const intersects = raycaster.intersectObjects(stationMarkersRef.current.children);
-      if (intersects.length > 0) {
-        const marker = intersects[0].object;
-        const station = (marker as THREE.Mesh & { userData: { station: WeatherStationMetadata } }).userData
-          .station;
-        onStationClick?.(station);
-      }
-    };
-
-    const canvas = renderer.domElement;
-    canvas.addEventListener('mousedown', handleMouseDown);
-    canvas.addEventListener('mousemove', handleMouseMove);
-    canvas.addEventListener('mouseup', handleMouseUp);
-    canvas.addEventListener('click', handleClick);
-
-    // Wheel zoom
-    const handleWheel = (event: WheelEvent) => {
-      event.preventDefault();
-      if (!cameraRef.current) return;
-
-      const zoomSpeed = 0.1;
-      const delta = event.deltaY > 0 ? 1 : -1;
-      cameraRef.current.position.z += delta * zoomSpeed;
-
-      // Clamp zoom
-      cameraRef.current.position.z = Math.max(2.5, Math.min(10, cameraRef.current.position.z));
-    };
-    canvas.addEventListener('wheel', handleWheel, { passive: false });
-
     // Cleanup
     return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
       window.removeEventListener('resize', handleResize);
-      canvas.removeEventListener('mousedown', handleMouseDown);
-      canvas.removeEventListener('mousemove', handleMouseMove);
-      canvas.removeEventListener('mouseup', handleMouseUp);
-      canvas.removeEventListener('click', handleClick);
-      canvas.removeEventListener('wheel', handleWheel);
-
-      if (frameRef.current) {
-        cancelAnimationFrame(frameRef.current);
-      }
-      if (inactivityTimer.current) {
-        clearTimeout(inactivityTimer.current);
-      }
-      renderer.dispose();
-      mountRef.current?.removeChild(renderer.domElement);
     };
-  }, [onStationClick]);
-
-  // Update station markers when stations change
-  useEffect(() => {
-    if (!stationMarkersRef.current) return;
-
-    // Clear existing markers
-    while (stationMarkersRef.current.children.length > 0) {
-      const child = stationMarkersRef.current.children[0];
-      stationMarkersRef.current.remove(child);
-      if (child instanceof THREE.Mesh) {
-        child.geometry.dispose();
-        if (child.material instanceof THREE.Material) {
-          child.material.dispose();
-        }
-      }
-    }
-
-    // Add new markers
-    stations.forEach((station) => {
-      if (station.lat === undefined || station.lng === undefined) return;
-
-      const latRad = station.lat * (Math.PI / 180);
-      const lngRad = -station.lng * (Math.PI / 180);
-
-      const radius = 2.05; // Slightly above earth surface
-      const x = radius * Math.cos(latRad) * Math.cos(lngRad);
-      const y = radius * Math.sin(latRad);
-      const z = radius * Math.cos(latRad) * Math.sin(lngRad);
-
-      // Create simple, clean marker
-      const markerGeometry = new THREE.SphereGeometry(0.015, 16, 16);
-      const markerMaterial = new THREE.MeshBasicMaterial({
-        color: 0xff3333,
-        transparent: true,
-        opacity: 0.95,
-      });
-      const marker = new THREE.Mesh(markerGeometry, markerMaterial);
-      marker.position.set(x, y, z);
-      marker.userData = { station };
-
-      stationMarkersRef.current?.add(marker);
-
-      // Add subtle glow
-      const glowGeometry = new THREE.SphereGeometry(0.025, 16, 16);
-      const glowMaterial = new THREE.MeshBasicMaterial({
-        color: 0xff3333,
-        transparent: true,
-        opacity: 0.3,
-      });
-      const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-      glow.position.set(x, y, z);
-      stationMarkersRef.current?.add(glow);
-    });
-  }, [stations]);
+  }, [stations, onStationClick]);
 
   return (
-    <div className="relative w-full h-screen">
-      <div ref={mountRef} className="w-full h-full" />
-      
+    <div className="relative w-full h-full bg-[#000814]">
+      <svg ref={svgRef} className="w-full h-full" />
+
       {/* Tooltip */}
       {hoveredStation && tooltipPosition && (
         <div
@@ -370,7 +224,7 @@ export function WeatherGlobe({ stations, onStationClick }: WeatherGlobeProps) {
           <span>{stations.length} active stations</span>
         </div>
         <div className="mt-3 text-xs text-gray-400">
-          🖱️ Drag to rotate • 🔍 Scroll to zoom
+          🖱️ Drag to rotate • Click markers for details
         </div>
       </div>
     </div>
