@@ -1,0 +1,7 @@
+services:
+  web:
+    build: .
+    expose:
+      - "80"
+    restart: unless-stopped
+
