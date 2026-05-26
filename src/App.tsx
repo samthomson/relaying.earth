@@ -31,7 +31,7 @@ const queryClient = new QueryClient({
 });
 
 const defaultConfig: AppConfig = {
-  theme: "light",
+  theme: "dark",
   relayMetadata: APP_RELAYS,
   blossomServerMetadata: {
     servers: [

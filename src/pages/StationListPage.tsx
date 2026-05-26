@@ -1,45 +1,54 @@
 import { useState, useMemo } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { Link } from 'react-router-dom';
-import { useWeatherStations } from '@/hooks/useWeatherStations';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Search, MapPin, X } from 'lucide-react';
+import { nip19 } from 'nostr-tools';
+
+import { Navbar } from '@/components/Navbar';
+import { Footer } from '@/components/Footer';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import { Footer } from '@/components/Footer';
-import { Search, MapPin, ArrowLeft } from 'lucide-react';
-import { nip19 } from 'nostr-tools';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+import { useWeatherStations } from '@/hooks/useWeatherStations';
 import { getSensorName } from '@/lib/weatherUtils';
+import type { WeatherStationMetadata } from '@/lib/weatherUtils';
+
+type SortKey = 'sensors' | 'name' | 'recent';
 
 const StationListPage = () => {
   useSeoMeta({
-    title: 'Weather Stations - Nostr Weather',
-    description: 'Browse all weather stations in the decentralized Nostr weather network.',
+    title: 'Stations — relaying.earth',
+    description:
+      'Browse every weather station broadcasting on the relaying.earth Nostr network.',
   });
 
   const { data: stations, isLoading } = useWeatherStations();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSensor, setSelectedSensor] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>('sensors');
 
-  // Get unique sensor types across all stations
   const availableSensors = useMemo(() => {
     if (!stations) return [];
     const sensorTypes = new Set<string>();
     stations.forEach((station) => {
-      station.sensors.forEach((sensor) => {
-        sensorTypes.add(sensor.type);
-      });
+      station.sensors.forEach((sensor) => sensorTypes.add(sensor.type));
     });
     return Array.from(sensorTypes).sort();
   }, [stations]);
 
-  // Filter stations
-  const filteredStations = useMemo(() => {
+  const filteredStations = useMemo<WeatherStationMetadata[]>(() => {
     if (!stations) return [];
-
-    return stations.filter((station) => {
-      // Search filter
+    const filtered = stations.filter((station) => {
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const matchesName = station.name?.toLowerCase().includes(query);
@@ -49,166 +58,179 @@ const StationListPage = () => {
           return false;
         }
       }
-
-      // Sensor filter
       if (selectedSensor) {
         const hasSensor = station.sensors.some((s) => s.type === selectedSensor);
         if (!hasSensor) return false;
       }
-
       return true;
     });
-  }, [stations, searchQuery, selectedSensor]);
+
+    const sorted = [...filtered];
+    switch (sortKey) {
+      case 'name':
+        sorted.sort((a, b) =>
+          (a.name || 'zzzz').localeCompare(b.name || 'zzzz', undefined, {
+            sensitivity: 'base',
+          }),
+        );
+        break;
+      case 'recent':
+        sorted.sort((a, b) => b.event.created_at - a.event.created_at);
+        break;
+      case 'sensors':
+      default:
+        sorted.sort((a, b) => b.sensors.length - a.sensors.length);
+        break;
+    }
+    return sorted;
+  }, [stations, searchQuery, selectedSensor, sortKey]);
+
+  const activeFilterCount =
+    (searchQuery ? 1 : 0) + (selectedSensor ? 1 : 0);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Link to="/">
-              <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-2xl font-bold">Weather Stations</h1>
-              <p className="text-sm text-muted-foreground">
-                {isLoading ? 'Loading...' : `${filteredStations.length} stations`}
-              </p>
-            </div>
-          </div>
+    <div className="flex min-h-screen flex-col bg-background">
+      <Navbar />
+
+      <header className="relative overflow-hidden border-b border-border">
+        <div className="absolute inset-0 bg-grid opacity-30" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/0 to-background" />
+        <div className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6">
+          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary">
+            Network
+          </p>
+          <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
+            All stations
+          </h1>
+          <p className="mt-3 max-w-xl text-sm text-muted-foreground sm:text-base">
+            {isLoading
+              ? 'Discovering stations on the relays…'
+              : `${filteredStations.length} ${filteredStations.length === 1 ? 'station' : 'stations'} broadcasting`}
+            {activeFilterCount > 0 && ' (filtered)'}.
+          </p>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
         {/* Filters */}
-        <div className="mb-8 space-y-4">
-          {/* Search */}
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative max-w-md flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search by name, location, or geohash..."
+              placeholder="Search name, description, or geohash…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-9"
             />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
 
-          {/* Sensor type filter */}
-          {availableSensors.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              <span className="text-sm text-muted-foreground self-center mr-2">
-                Filter by sensor:
-              </span>
-              <Button
-                variant={selectedSensor === null ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSelectedSensor(null)}
-              >
-                All
-              </Button>
-              {availableSensors.map((sensorType) => (
-                <Button
-                  key={sensorType}
-                  variant={selectedSensor === sensorType ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedSensor(sensorType)}
-                >
-                  {getSensorName(sensorType)}
-                </Button>
-              ))}
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              Sort
+            </span>
+            <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+              <SelectTrigger className="h-9 w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sensors">Most sensors</SelectItem>
+                <SelectItem value="recent">Recently updated</SelectItem>
+                <SelectItem value="name">Name (A→Z)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        {/* Station List */}
+        {availableSensors.length > 0 && (
+          <div className="mb-8 flex flex-wrap items-center gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              Sensor
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedSensor(null)}
+              className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                selectedSensor === null
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+              }`}
+            >
+              All
+            </button>
+            {availableSensors.map((sensorType) => {
+              const active = selectedSensor === sensorType;
+              return (
+                <button
+                  key={sensorType}
+                  type="button"
+                  onClick={() => setSelectedSensor(active ? null : sensorType)}
+                  className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                    active
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+                  }`}
+                >
+                  {getSensorName(sensorType)}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <Card key={i}>
-                <CardHeader>
-                  <Skeleton className="h-6 w-3/4" />
-                  <Skeleton className="h-4 w-full mt-2" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-4 w-1/2 mb-2" />
-                  <Skeleton className="h-4 w-2/3" />
+              <Card key={i} className="bg-card/60">
+                <CardContent className="p-5">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="mt-2 h-4 w-full" />
+                  <div className="mt-4 flex gap-1.5">
+                    <Skeleton className="h-5 w-14 rounded-full" />
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         ) : filteredStations.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="py-12 px-8 text-center">
-              <p className="text-muted-foreground max-w-sm mx-auto">
-                {searchQuery || selectedSensor
-                  ? 'No stations match your filters. Try adjusting your search.'
-                  : 'No weather stations found. Be the first to set one up!'}
+          <Card className="border-dashed bg-card/40">
+            <CardContent className="py-16 text-center">
+              <p className="mx-auto max-w-md text-sm text-muted-foreground">
+                {activeFilterCount > 0
+                  ? 'No stations match your filters.'
+                  : 'No weather stations have published metadata on the relays this client is connected to.'}
               </p>
+              {activeFilterCount > 0 && (
+                <Button
+                  variant="ghost"
+                  className="mt-4"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedSensor(null);
+                  }}
+                >
+                  Reset filters
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredStations.map((station) => {
-              const npub = nip19.npubEncode(station.pubkey);
-              return (
-                <Link key={station.pubkey} to={`/${npub}`}>
-                  <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardHeader>
-                      <CardTitle className="text-lg">
-                        {station.name || 'Unnamed Station'}
-                      </CardTitle>
-                      {station.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {station.description}
-                        </p>
-                      )}
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {/* Location */}
-                      {station.geohash && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-mono text-muted-foreground">
-                            {station.geohash}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Sensors */}
-                      <div>
-                        <div className="text-xs text-muted-foreground mb-2">
-                          Sensors ({station.sensors.length})
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {station.sensors.slice(0, 4).map((sensor, idx) => (
-                            <Badge key={idx} variant="secondary" className="text-xs">
-                              {getSensorName(sensor.type)}
-                            </Badge>
-                          ))}
-                          {station.sensors.length > 4 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{station.sensors.length - 4}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Hardware */}
-                      <div className="flex gap-2 text-xs">
-                        {station.power && (
-                          <Badge variant="outline">{station.power}</Badge>
-                        )}
-                        {station.connectivity && (
-                          <Badge variant="outline">{station.connectivity}</Badge>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredStations.map((station) => (
+              <StationListCard key={station.pubkey} station={station} />
+            ))}
           </div>
         )}
       </div>
@@ -217,5 +239,76 @@ const StationListPage = () => {
     </div>
   );
 };
+
+function StationListCard({ station }: { station: WeatherStationMetadata }) {
+  const npub = nip19.npubEncode(station.pubkey);
+  const okSensors = station.sensors.filter(
+    (s) =>
+      !station.sensorStatuses.find(
+        (st) => st.type === s.type && st.model === s.model && st.status !== 'ok',
+      ),
+  ).length;
+
+  return (
+    <Link to={`/${npub}`} className="group">
+      <Card className="relative h-full overflow-hidden border-border/70 bg-card/60 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5">
+        <CardContent className="flex h-full flex-col gap-4 p-5">
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="line-clamp-2 font-display text-lg font-semibold leading-tight">
+              {station.name || 'Unnamed station'}
+            </h3>
+            <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-mono uppercase tracking-widest text-primary">
+              <span className="relative inline-flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-70 animate-ping" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+              </span>
+              live
+            </span>
+          </div>
+
+          {station.description && (
+            <p className="line-clamp-2 text-sm text-muted-foreground">
+              {station.description}
+            </p>
+          )}
+
+          <div className="mt-auto space-y-3">
+            <div className="flex flex-wrap gap-1.5">
+              {station.sensors.slice(0, 6).map((sensor, idx) => (
+                <Badge
+                  key={`${sensor.type}-${idx}`}
+                  variant="outline"
+                  className="border-border/80 bg-muted/40 text-[11px] text-foreground"
+                >
+                  {getSensorName(sensor.type)}
+                </Badge>
+              ))}
+              {station.sensors.length > 6 && (
+                <Badge variant="outline" className="border-border/80 bg-muted/40 text-[11px] text-muted-foreground">
+                  +{station.sensors.length - 6}
+                </Badge>
+              )}
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 border-t border-border/70 pt-3 text-[11px] font-mono uppercase tracking-widest text-muted-foreground">
+              <div className="flex items-center gap-1.5">
+                <MapPin className="h-3 w-3" />
+                <span className="truncate">
+                  {station.geohash ? station.geohash : '—'}
+                </span>
+              </div>
+              <div>
+                {okSensors}/{station.sensors.length} ok
+              </div>
+              <div className="text-right">
+                {station.connectivity || '—'}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
 
 export default StationListPage;
