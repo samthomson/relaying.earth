@@ -22,7 +22,16 @@ Open `http://localhost:5173`.
 - [`AGENTS.md`](./AGENTS.md) — project conventions, Nostr integration guidelines, and security rules
 - [`NIP.md`](./NIP.md) — custom Nostr kinds and schemas (if any)
 
-## todo
+## Design
 
-- [ ] 
+The app uses a single light theme. Brand palette: white, orange, purple, grey, black, maroon.
 
+## TODO
+
+- [ ] Wire up real weather station data sources
+- [ ] Add station detail page
+- [ ] Implement station favouriting / list management
+- [ ] Add map view for station locations
+
+- [ ] src/components/Navbar.tsx still has light/dark stuff
+- [ ] src/components/WeatherGlobe.tsx has a bunch of extenral assets eg unpkg and looks messy in general. make a more succinct map implementation

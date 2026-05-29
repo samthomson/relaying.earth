@@ -326,6 +326,20 @@ For empty results, show a minimalist empty state in a `border-dashed` card:
 
 For font installation, color-scheme changes, light/dark theming, or the `isolate` + negative-z-index gotcha, load the **`theming`** skill.
 
+## Visual Identity
+
+The app uses a single light theme with a warm paper-white canvas. Do not add dark mode or dual-theme support.
+
+Brand palette:
+- **White / paper** — `hsl(38 33% 97%)` (background), `#FFFFFF` (cards / surfaces)
+- **Orange** — `hsl(22 96% 54%)` (primary / CTAs / links)
+- **Purple** — `hsl(275 48% 52%)` (brand accent)
+- **Grey** — `hsl(30 8% 42%)` (secondary text / muted)
+- **Black** — `hsl(30 14% 12%)` (body text / headings)
+- **Maroon** — `hsl(348 50% 48%)` (accent / destructive states)
+
+These values map to Tailwind tokens via CSS variables in `src/index.css` (`--background`, `--foreground`, `--primary`, `--brand-orange`, `--brand-purple`, `--brand-maroon`, etc.).
+
 ## Writing Tests vs. Running Tests
 
 **Running the existing test script — always do it.** After any code change, run the project's test/validation script. **Your task is not complete until it passes.** The script typically covers TypeScript compilation, ESLint, and existing tests.

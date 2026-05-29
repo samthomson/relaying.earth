@@ -5,7 +5,6 @@ import { Link } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 
 import type { WeatherStationMetadata } from '@/lib/weatherUtils';
-import { computeSubSolarPoint } from '@/lib/sun';
 
 interface WeatherGlobeProps {
   stations: WeatherStationMetadata[];
@@ -14,62 +13,11 @@ interface WeatherGlobeProps {
   highlightedPubkey?: string | null;
 }
 
-// Asset URLs. The `three-globe` example assets are served by unpkg; CSP allows
-// https for img-src so they load fine. These are NASA Blue Marble + Black
-// Marble (night lights) + topology (used as a bump map).
+// Day texture only — always fully lit, matches the light theme.
 const DAY_TEXTURE_URL =
   'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
-const NIGHT_TEXTURE_URL =
-  'https://unpkg.com/three-globe/example/img/earth-night.jpg';
 const BUMP_TEXTURE_URL =
   'https://unpkg.com/three-globe/example/img/earth-topology.png';
-
-// Custom shader that blends day and night textures based on the real-time sun
-// position. The terminator is softened with a smoothstep so the sunrise /
-// sunset line is realistic-looking rather than knife-edged.
-const DAY_NIGHT_VERTEX = /* glsl */ `
-  varying vec3 vWorldNormal;
-  varying vec2 vUv;
-  void main() {
-    vUv = uv;
-    vWorldNormal = normalize(mat3(modelMatrix) * normal);
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`;
-
-const DAY_NIGHT_FRAGMENT = /* glsl */ `
-  #define PI 3.141592653589793
-  uniform sampler2D uDayTexture;
-  uniform sampler2D uNightTexture;
-  uniform vec2 uSunLatLng; // (lat, lng) in degrees
-  varying vec3 vWorldNormal;
-  varying vec2 vUv;
-
-  // three-globe's lat/lng -> unit vector convention
-  vec3 polar2Cartesian(in float lat, in float lng) {
-    float phi = (90.0 - lat) * PI / 180.0;
-    float theta = (90.0 - lng) * PI / 180.0;
-    return vec3(
-      sin(phi) * cos(theta),
-      cos(phi),
-      sin(phi) * sin(theta)
-    );
-  }
-
-  void main() {
-    vec3 sunDir = polar2Cartesian(uSunLatLng.x, uSunLatLng.y);
-    float intensity = dot(normalize(vWorldNormal), sunDir);
-    // Soft terminator (~10° wide on each side)
-    float dayMix = smoothstep(-0.18, 0.18, intensity);
-
-    vec4 day = texture2D(uDayTexture, vUv);
-    vec4 night = texture2D(uNightTexture, vUv);
-    // Slightly boost city lights so they read well at low angles.
-    night.rgb *= 1.5;
-
-    gl_FragColor = mix(night, day, dayMix);
-  }
-`;
 
 interface StationPoint {
   lat: number;
@@ -103,48 +51,31 @@ export function WeatherGlobe({
     return () => ro.disconnect();
   }, []);
 
-  // Custom day/night globe material. Built once; textures load asynchronously.
+  // Always-lit day material — MeshPhongMaterial with high ambient so the
+  // globe looks bright regardless of the scene's directional light position.
   const globeMaterial = useMemo(() => {
     const loader = new THREE.TextureLoader();
     loader.crossOrigin = 'anonymous';
-
     const dayTexture = loader.load(DAY_TEXTURE_URL);
-    const nightTexture = loader.load(NIGHT_TEXTURE_URL);
     dayTexture.colorSpace = THREE.SRGBColorSpace;
-    nightTexture.colorSpace = THREE.SRGBColorSpace;
-
-    return new THREE.ShaderMaterial({
-      uniforms: {
-        uDayTexture: { value: dayTexture },
-        uNightTexture: { value: nightTexture },
-        uSunLatLng: { value: new THREE.Vector2(0, 0) },
-      },
-      vertexShader: DAY_NIGHT_VERTEX,
-      fragmentShader: DAY_NIGHT_FRAGMENT,
+    const bumpTexture = loader.load(BUMP_TEXTURE_URL);
+    return new THREE.MeshPhongMaterial({
+      map: dayTexture,
+      bumpMap: bumpTexture,
+      bumpScale: 0.5,
+      // Full ambient so no face is ever in shadow.
+      emissive: new THREE.Color(0x222222),
+      shininess: 8,
     });
   }, []);
 
-  // Dispose the material's textures + material when the component unmounts.
+  // Dispose textures on unmount.
   useEffect(() => {
     return () => {
-      const uniforms = globeMaterial.uniforms;
-      (uniforms.uDayTexture.value as THREE.Texture | undefined)?.dispose();
-      (uniforms.uNightTexture.value as THREE.Texture | undefined)?.dispose();
+      (globeMaterial.map as THREE.Texture | null)?.dispose();
+      (globeMaterial.bumpMap as THREE.Texture | null)?.dispose();
       globeMaterial.dispose();
     };
-  }, [globeMaterial]);
-
-  // Keep the sun-position uniform in sync with real wall-clock time. The sun
-  // moves slowly (15°/hour) so a 30-second tick is plenty.
-  useEffect(() => {
-    const update = () => {
-      const { lat, lng } = computeSubSolarPoint(new Date());
-      const v = globeMaterial.uniforms.uSunLatLng.value as THREE.Vector2;
-      v.set(lat, lng);
-    };
-    update();
-    const id = window.setInterval(update, 30 * 1000);
-    return () => window.clearInterval(id);
   }, [globeMaterial]);
 
   // Configure orbit controls once the globe is ready.
@@ -235,12 +166,10 @@ export function WeatherGlobe({
         height={size.height}
         animateIn={false}
         backgroundColor="rgba(0,0,0,0)"
-        backgroundImageUrl="https://unpkg.com/three-globe/example/img/night-sky.png"
         globeMaterial={globeMaterial}
-        bumpImageUrl={BUMP_TEXTURE_URL}
         showAtmosphere
-        atmosphereColor="#ff7a1a"
-        atmosphereAltitude={0.18}
+        atmosphereColor="#f97316"
+        atmosphereAltitude={0.12}
         // Stations as bright orange dots sitting just above the surface
         pointsData={points}
         pointLat={(d) => (d as StationPoint).lat}

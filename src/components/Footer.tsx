@@ -34,7 +34,6 @@ const externalLinks = [
 export function Footer() {
   return (
     <footer className="relative border-t border-border bg-background">
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
         <div className="grid gap-10 sm:grid-cols-[1fr_auto_auto]">
           <div className="max-w-sm">

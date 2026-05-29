@@ -1,8 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -67,62 +65,33 @@
   --animate-shimmer: shimmer 2.6s linear infinite;
 
   @keyframes accordion-down {
-    from {
-      height: 0;
-    }
-    to {
-      height: var(--radix-accordion-content-height);
-    }
+    from { height: 0; }
+    to { height: var(--radix-accordion-content-height); }
   }
 
   @keyframes accordion-up {
-    from {
-      height: var(--radix-accordion-content-height);
-    }
-    to {
-      height: 0;
-    }
+    from { height: var(--radix-accordion-content-height); }
+    to { height: 0; }
   }
 
   @keyframes pulse-slow {
-    0%,
-    100% {
-      opacity: 0.55;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 1;
-      transform: scale(1.08);
-    }
+    0%, 100% { opacity: 0.55; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.08); }
   }
 
   @keyframes pulse-ring {
-    0% {
-      transform: scale(0.6);
-      opacity: 0.9;
-    }
-    100% {
-      transform: scale(2.4);
-      opacity: 0;
-    }
+    0% { transform: scale(0.6); opacity: 0.9; }
+    100% { transform: scale(2.4); opacity: 0; }
   }
 
   @keyframes marquee {
-    from {
-      transform: translateX(0);
-    }
-    to {
-      transform: translateX(-50%);
-    }
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
   }
 
   @keyframes shimmer {
-    0% {
-      background-position: -200% 0;
-    }
-    100% {
-      background-position: 200% 0;
-    }
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
   }
 }
 
@@ -134,109 +103,68 @@
   }
 }
 
+/* ────────────────────────────────────────────────────────────────
+   relaying.earth — single light theme
+   Palette: white, orange, purple, grey, black, maroon
+   ──────────────────────────────────────────────────────────────── */
+
 :root {
   --radius: 0.75rem;
 
-  /* Default to dark / on-brand. relaying.earth feels best as a deep-space
-     dark interface; the .dark class below mirrors and slightly deepens. */
-  --background: hsl(0 0% 6%);
-  --foreground: hsl(30 8% 95%);
+  /* ── Canvas ── */
+  --background: hsl(0 0% 98%);
+  --foreground: hsl(24 10% 10%);
 
-  --card: hsl(0 0% 8%);
-  --card-foreground: hsl(30 8% 95%);
+  /* ── Surfaces ── */
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(24 10% 10%);
 
-  --popover: hsl(0 0% 8%);
-  --popover-foreground: hsl(30 8% 95%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(24 10% 10%);
 
-  /* Brand orange */
-  --primary: hsl(22 96% 56%);
-  --primary-foreground: hsl(0 0% 6%);
+  /* ── Orange (CTAs, active states, links) ── */
+  --primary: hsl(22 96% 52%);
+  --primary-foreground: hsl(0 0% 100%);
 
-  /* Brand purple (deep) */
-  --secondary: hsl(275 38% 22%);
-  --secondary-foreground: hsl(30 8% 95%);
+  /* ── Purple (tags, badges, secondary actions) ── */
+  --secondary: hsl(275 55% 94%);
+  --secondary-foreground: hsl(275 45% 28%);
 
-  --muted: hsl(0 0% 13%);
-  --muted-foreground: hsl(30 6% 62%);
+  /* ── Greys ── */
+  --muted: hsl(220 10% 93%);
+  --muted-foreground: hsl(220 8% 42%);
 
-  /* Brand maroon */
-  --accent: hsl(348 55% 32%);
-  --accent-foreground: hsl(30 8% 95%);
+  /* ── Maroon (alerts, highlights, destructive-ish) ── */
+  --accent: hsl(348 58% 48%);
+  --accent-foreground: hsl(0 0% 100%);
 
-  --destructive: hsl(348 72% 46%);
-  --destructive-foreground: hsl(30 8% 95%);
+  --destructive: hsl(348 65% 50%);
+  --destructive-foreground: hsl(0 0% 100%);
 
-  --border: hsl(0 0% 16%);
-  --input: hsl(0 0% 14%);
-  --ring: hsl(22 96% 56%);
+  /* ── Borders / inputs ── */
+  --border: hsl(220 10% 88%);
+  --input: hsl(220 10% 90%);
+  --ring: hsl(22 96% 52%);
 
-  --brand-orange: hsl(22 96% 56%);
-  --brand-purple: hsl(275 60% 58%);
-  --brand-maroon: hsl(348 65% 38%);
+  /* ── Raw brand tokens ── */
+  --brand-orange: hsl(22 96% 52%);
+  --brand-purple: hsl(275 55% 52%);
+  --brand-maroon: hsl(348 58% 48%);
 
-  --chart-1: hsl(22 96% 56%);
-  --chart-2: hsl(275 60% 62%);
-  --chart-3: hsl(348 65% 50%);
-  --chart-4: hsl(30 6% 72%);
-  --chart-5: hsl(38 92% 60%);
+  --chart-1: hsl(22 96% 52%);
+  --chart-2: hsl(275 55% 52%);
+  --chart-3: hsl(348 58% 48%);
+  --chart-4: hsl(220 8% 42%);
+  --chart-5: hsl(38 85% 52%);
 
-  --sidebar: hsl(0 0% 7%);
-  --sidebar-foreground: hsl(30 8% 88%);
-  --sidebar-primary: hsl(22 96% 56%);
-  --sidebar-primary-foreground: hsl(0 0% 6%);
-  --sidebar-accent: hsl(0 0% 12%);
-  --sidebar-accent-foreground: hsl(30 8% 95%);
-  --sidebar-border: hsl(0 0% 16%);
-  --sidebar-ring: hsl(22 96% 56%);
-}
-
-.dark {
-  --background: hsl(0 0% 5%);
-  --foreground: hsl(30 8% 95%);
-
-  --card: hsl(0 0% 8%);
-  --card-foreground: hsl(30 8% 95%);
-
-  --popover: hsl(0 0% 8%);
-  --popover-foreground: hsl(30 8% 95%);
-
-  --primary: hsl(22 96% 56%);
-  --primary-foreground: hsl(0 0% 6%);
-
-  --secondary: hsl(275 38% 22%);
-  --secondary-foreground: hsl(30 8% 95%);
-
-  --muted: hsl(0 0% 13%);
-  --muted-foreground: hsl(30 6% 62%);
-
-  --accent: hsl(348 55% 32%);
-  --accent-foreground: hsl(30 8% 95%);
-
-  --destructive: hsl(348 72% 46%);
-  --destructive-foreground: hsl(30 8% 95%);
-
-  --border: hsl(0 0% 16%);
-  --input: hsl(0 0% 14%);
-  --ring: hsl(22 96% 56%);
-
-  --brand-orange: hsl(22 96% 56%);
-  --brand-purple: hsl(275 60% 58%);
-  --brand-maroon: hsl(348 65% 38%);
-
-  --chart-1: hsl(22 96% 56%);
-  --chart-2: hsl(275 60% 62%);
-  --chart-3: hsl(348 65% 50%);
-  --chart-4: hsl(30 6% 72%);
-  --chart-5: hsl(38 92% 60%);
-
-  --sidebar: hsl(0 0% 7%);
-  --sidebar-foreground: hsl(30 8% 88%);
-  --sidebar-primary: hsl(22 96% 56%);
-  --sidebar-primary-foreground: hsl(0 0% 6%);
-  --sidebar-accent: hsl(0 0% 12%);
-  --sidebar-accent-foreground: hsl(30 8% 95%);
-  --sidebar-border: hsl(0 0% 16%);
-  --sidebar-ring: hsl(22 96% 56%);
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(24 10% 10%);
+  --sidebar-primary: hsl(22 96% 52%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(220 10% 93%);
+  --sidebar-accent-foreground: hsl(24 10% 10%);
+  --sidebar-border: hsl(220 10% 88%);
+  --sidebar-ring: hsl(22 96% 52%);
 }
 
 @layer base {
@@ -260,7 +188,7 @@
   }
 
   ::selection {
-    background-color: color-mix(in oklab, var(--brand-orange) 38%, transparent);
+    background-color: color-mix(in oklab, var(--brand-orange) 28%, transparent);
     color: var(--foreground);
   }
 }
@@ -287,20 +215,12 @@
     );
   }
 
-  .brand-gradient-text {
-    background: linear-gradient(
-      90deg,
-      var(--brand-orange) 0%,
-      hsl(348 75% 60%) 55%,
-      var(--brand-purple) 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  .text-brand {
+    color: var(--brand-orange);
   }
 
   .ring-pulse {
-    box-shadow: 0 0 0 0 color-mix(in oklab, var(--brand-orange) 60%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--brand-orange) 50%, transparent);
     animation: pulse-ring 2.8s ease-out infinite;
   }
 
@@ -308,10 +228,10 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
-    mix-blend-mode: overlay;
-    opacity: 0.06;
+    mix-blend-mode: multiply;
+    opacity: 0.04;
     background-image: radial-gradient(
-      rgba(255, 255, 255, 0.6) 1px,
+      rgba(0, 0, 0, 0.5) 1px,
       transparent 1px
     );
     background-size: 3px 3px;
