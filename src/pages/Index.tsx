@@ -7,6 +7,7 @@ import { WeatherGlobe } from '@/components/WeatherGlobe';
 import { StationDetailPanel } from '@/components/StationDetailPanel';
 import { Navbar } from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
+import { useOnlineStationCount } from '@/hooks/useOnlineStationCount';
 import { useWeatherStations } from '@/hooks/useWeatherStations';
 import type { WeatherStationMetadata } from '@/lib/weatherUtils';
 
@@ -19,6 +20,7 @@ const Index = () => {
 
   const [selectedStation, setSelectedStation] = useState<WeatherStationMetadata | null>(null);
   const { data: stations } = useWeatherStations();
+  const { data: onlineCount } = useOnlineStationCount();
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
@@ -65,7 +67,7 @@ const Index = () => {
             Stations online
           </p>
           <p className="font-display text-4xl font-semibold tabular-nums text-foreground sm:text-5xl">
-            {stations?.length ?? '—'}
+            {onlineCount ?? '—'}
           </p>
         </div>
       </div>
