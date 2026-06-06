@@ -40,7 +40,7 @@ export function Footer() {
             <div className="flex items-center gap-3">
               <BrandMark className="h-8 w-8" static />
               <span className="font-display text-base font-semibold tracking-tight">
-                relaying<span className="text-primary">.</span>earth
+                relaying<span className="text-brand-maroon">.</span>earth
               </span>
             </div>
             <p className="mt-3 text-sm text-muted-foreground">
@@ -93,11 +93,11 @@ export function Footer() {
 
         <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6 text-[11px] text-muted-foreground">
           <p className="font-mono uppercase tracking-widest">
-            kind <span className="text-primary">16158</span> · station ·{' '}
-            <span className="text-primary">4223</span> · reading ·{' '}
-            <span className="text-primary">36643</span> · list
+            kind <span className="text-brand-maroon">16158</span> · station ·{' '}
+            <span className="text-brand-maroon">4223</span> · reading ·{' '}
+            <span className="text-brand-maroon">36643</span> · list
           </p>
-          <p>© {new Date().getFullYear()} relaying.earth — built on Nostr</p>
+          <p>© {new Date().getFullYear()} relaying.earth - built on Nostr</p>
         </div>
       </div>
     </footer>

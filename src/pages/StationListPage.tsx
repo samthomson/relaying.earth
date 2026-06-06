@@ -96,7 +96,7 @@ const StationListPage = () => {
         <div className="absolute inset-0 bg-grid opacity-30" />
         <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/0 to-background" />
         <div className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6">
-          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary">
+          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-brand-maroon">
             Network
           </p>
           <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight sm:text-5xl">

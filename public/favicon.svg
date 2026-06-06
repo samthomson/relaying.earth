@@ -1,10 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none">
-  <circle cx="18" cy="22" r="12" stroke="hsl(24 10% 10%)" stroke-width="1.7"/>
-  <ellipse cx="18" cy="22" rx="4.6" ry="12" stroke="hsl(220 8% 42%)" stroke-width="1.2" opacity="0.5"/>
-  <ellipse cx="18" cy="22" rx="12" ry="4.6" stroke="hsl(220 8% 42%)" stroke-width="1.2" opacity="0.5"/>
-  <g stroke="hsl(348 58% 48%)" stroke-width="1.7" stroke-linecap="round" fill="none">
-    <path d="M25.95 9.03 A4.5 4.5 0 0 1 30.97 14.05" opacity="0.85"/>
-    <path d="M25.52 5.56 A8 8 0 0 1 34.44 14.48" opacity="0.45"/>
+  <rect width="40" height="40" rx="9" fill="hsl(348 58% 48%)"/>
+  <circle cx="18" cy="22" r="12" stroke="white" stroke-width="1.7"/>
+  <ellipse cx="18" cy="22" rx="4.6" ry="12" stroke="white" stroke-width="1.2" opacity="0.55"/>
+  <ellipse cx="18" cy="22" rx="12" ry="4.6" stroke="white" stroke-width="1.2" opacity="0.55"/>
+  <g stroke="white" stroke-width="1.7" stroke-linecap="round" fill="none">
+    <path d="M25.95 9.03 A4.5 4.5 0 0 1 30.97 14.05" opacity="0.9"/>
+    <path d="M25.52 5.56 A8 8 0 0 1 34.44 14.48" opacity="0.5"/>
   </g>
-  <circle cx="26.5" cy="13.5" r="1.9" fill="hsl(348 58% 48%)"/>
+  <circle cx="26.5" cy="13.5" r="1.9" fill="white"/>
 </svg>

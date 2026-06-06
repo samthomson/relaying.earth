@@ -213,7 +213,6 @@ const StationDetailPage = () => {
       {/* Hero */}
       <header className="relative overflow-hidden border-b border-border">
         <div className="absolute inset-0 bg-grid opacity-20" />
-        <div className="absolute inset-x-0 -top-32 h-72 bg-[radial-gradient(circle_at_30%_50%,color-mix(in_oklab,var(--brand-orange)_22%,transparent),transparent_60%)]" />
         <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6">
           <Link
             to="/stations"

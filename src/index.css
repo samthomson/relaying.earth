@@ -134,9 +134,9 @@
   --muted: hsl(220 10% 93%);
   --muted-foreground: hsl(220 8% 42%);
 
-  /* ── Maroon (alerts, highlights, destructive-ish) ── */
-  --accent: hsl(348 58% 48%);
-  --accent-foreground: hsl(0 0% 100%);
+  /* ── Maroon tint (subtle hover surfaces — not solid maroon) ── */
+  --accent: hsl(348 40% 93%);
+  --accent-foreground: hsl(348 58% 38%);
 
   --destructive: hsl(348 65% 50%);
   --destructive-foreground: hsl(0 0% 100%);

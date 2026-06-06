@@ -31,13 +31,13 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <button className='flex items-center gap-2 h-10 p-1 pr-2.5 rounded-full hover:bg-accent transition-all text-foreground'>
+        <button className='flex cursor-pointer items-center gap-2 h-10 rounded-full border border-border bg-card p-1 pr-2.5 shadow-xs transition-colors hover:bg-muted text-foreground'>
           <Avatar className='w-8 h-8'>
             <AvatarImage
               src={currentUser.metadata.picture}
               alt={isCurrentUserPending ? '' : getDisplayName(currentUser)}
             />
-            <AvatarFallback>
+            <AvatarFallback className='bg-muted text-foreground'>
               {isCurrentUserPending ? (
                 <Skeleton className='size-full rounded-full' />
               ) : (
@@ -45,7 +45,7 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
               )}
             </AvatarFallback>
           </Avatar>
-          <ChevronDown className='w-4 h-4 text-muted-foreground' />
+          <ChevronDown className='w-4 h-4 text-foreground/60' />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className='w-56 p-2 animate-scale-in'>
@@ -78,7 +78,7 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
                   <p className='text-sm font-medium'>{getDisplayName(user)}</p>
                 )}
               </div>
-              {user.id === currentUser.id && <div className='w-2 h-2 rounded-full bg-primary'></div>}
+              {user.id === currentUser.id && <div className='w-2 h-2 rounded-full bg-brand-maroon'></div>}
             </DropdownMenuItem>
           );
         })}

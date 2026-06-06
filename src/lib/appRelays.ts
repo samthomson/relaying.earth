@@ -14,7 +14,6 @@ export const DEFAULT_RELAYS: { url: string; note?: string }[] = [
     note: "The project's own relay — weather station events live here.",
   },
   { url: 'wss://relay.ditto.pub', note: 'General-purpose Nostr relay.' },
-  { url: 'wss://relay.damus.io', note: 'General-purpose Nostr relay.' },
   { url: 'wss://relay.primal.net', note: 'General-purpose Nostr relay.' },
   { url: 'wss://nos.lol', note: 'Community-run general-purpose relay.' },
   { url: 'wss://relay.nostr.band', note: 'Indexed Nostr relay.' },

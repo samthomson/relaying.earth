@@ -49,12 +49,12 @@ const Index = () => {
             Nostr-powered weather stations broadcasting in real time.
           </p>
           <div className="pointer-events-auto mt-5">
-            <Link to="/stations">
-              <Button size="lg" className="gap-2">
+            <Button asChild size="lg">
+              <Link to="/stations">
                 Explore the network
                 <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
           <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground/60">
             Drag to spin · scroll to zoom · click a station

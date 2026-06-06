@@ -193,7 +193,7 @@ const MyStationsPage = () => {
         <Navbar />
         <main className="flex flex-1 items-center justify-center px-4 py-16">
           <div className="w-full max-w-md text-center">
-            <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary">
+            <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-brand-maroon">
               Signed-out
             </p>
             <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight">
@@ -219,11 +219,10 @@ const MyStationsPage = () => {
 
       <header className="relative overflow-hidden border-b border-border">
         <div className="absolute inset-0 bg-grid opacity-30" />
-        <div className="absolute inset-x-0 -top-32 h-72 bg-[radial-gradient(circle_at_70%_50%,color-mix(in_oklab,var(--brand-purple)_22%,transparent),transparent_60%)]" />
         <div className="relative mx-auto flex max-w-7xl flex-wrap items-end justify-between gap-4 px-4 py-12 sm:px-6">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary">
-              You · kind 36643
+            <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-brand-maroon">
+              kind 36643
             </p>
             <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
               My lists
