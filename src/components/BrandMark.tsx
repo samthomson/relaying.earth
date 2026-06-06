@@ -2,15 +2,14 @@ import { cn } from '@/lib/utils';
 
 interface BrandMarkProps {
   className?: string;
-  /** Disable the gentle pulsing animation. */
+  /** Disable the gentle pulsing animation on the outer signal arc. */
   static?: boolean;
 }
 
 /**
- * The relaying.earth mark — a stylised globe being relayed: a circle (the
- * planet) with three rising transmission lines escaping it.
- *
- * Uses `currentColor` so it adapts to text colour. Best used at 32–96px.
+ * The relaying.earth mark — a transmitting planet. Dark globe grid, maroon
+ * broadcast arcs and station node. Orange and purple are reserved for CTAs
+ * and rare accents elsewhere in the app.
  */
 export function BrandMark({ className, static: isStatic = false }: BrandMarkProps) {
   return (
@@ -21,38 +20,39 @@ export function BrandMark({ className, static: isStatic = false }: BrandMarkProp
       aria-hidden="true"
       className={cn('overflow-visible', className)}
     >
-      {/* Planet */}
-      <circle
-        cx="20"
-        cy="24"
-        r="11"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        opacity="0.85"
-      />
-      {/* Equator */}
+      {/* Globe */}
+      <circle cx="18" cy="22" r="12" className="stroke-foreground" strokeWidth="1.7" />
+      {/* Meridian (longitude) */}
       <ellipse
-        cx="20"
-        cy="24"
-        rx="11"
-        ry="3.4"
-        stroke="currentColor"
-        strokeWidth="1"
-        opacity="0.32"
+        cx="18"
+        cy="22"
+        rx="4.6"
+        ry="12"
+        className="stroke-muted-foreground"
+        strokeWidth="1.2"
+        opacity="0.55"
       />
-      {/* Transmission rays */}
-      <g
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        className={isStatic ? undefined : 'origin-center'}
-      >
-        <line x1="20" y1="9.5" x2="20" y2="3" opacity="0.95" />
-        <line x1="11.5" y1="13" x2="6.5" y2="8" opacity="0.6" />
-        <line x1="28.5" y1="13" x2="33.5" y2="8" opacity="0.6" />
+      {/* Equator (latitude) */}
+      <ellipse
+        cx="18"
+        cy="22"
+        rx="12"
+        ry="4.6"
+        className="stroke-muted-foreground"
+        strokeWidth="1.2"
+        opacity="0.55"
+      />
+      {/* Broadcast arcs */}
+      <g className="stroke-brand-maroon" strokeWidth="1.7" strokeLinecap="round" fill="none">
+        <path d="M25.95 9.03 A4.5 4.5 0 0 1 30.97 14.05" opacity="0.85" />
+        <path
+          d="M25.52 5.56 A8 8 0 0 1 34.44 14.48"
+          opacity="0.45"
+          className={isStatic ? undefined : 'motion-safe:animate-pulse'}
+        />
       </g>
-      {/* Centre dot — the transmitting station */}
-      <circle cx="20" cy="13" r="1.8" fill="currentColor" />
+      {/* Station node */}
+      <circle cx="26.5" cy="13.5" r="1.9" className="fill-brand-maroon" />
     </svg>
   );
 }

@@ -52,13 +52,13 @@ export function Navbar({ floating = false, dark = false }: NavbarProps) {
           className="group flex items-center gap-3 transition-opacity hover:opacity-90"
           aria-label="relaying.earth home"
         >
-          <BrandMark className="h-8 w-8 text-primary" />
-          <div className="flex flex-col leading-tight">
-            <span className={cn('font-display text-base font-semibold tracking-tight', dark ? 'text-white' : 'text-foreground')}>
-              relaying<span className="text-primary">.</span>earth
+          <BrandMark className="h-10 w-10 shrink-0" static />
+          <div className="flex flex-col justify-center leading-tight">
+            <span className={cn('font-display text-lg font-semibold tracking-tight', dark ? 'text-white' : 'text-foreground')}>
+              relaying<span className="text-brand-maroon">.</span>earth
             </span>
-            <span className="hidden text-[10px] font-mono uppercase tracking-[0.22em] text-zinc-500 sm:block">
-              Nostr · weather · network
+            <span className={cn('hidden text-xs sm:block', dark ? 'text-zinc-400' : 'text-muted-foreground')}>
+              weather data over nostr
             </span>
           </div>
         </Link>

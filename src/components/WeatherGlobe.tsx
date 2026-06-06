@@ -4,7 +4,14 @@ import * as THREE from 'three';
 import { Link } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 
+import { brandColors } from '@/lib/brandColors';
 import type { WeatherStationMetadata } from '@/lib/weatherUtils';
+
+// NASA Blue Marble — real satellite imagery, bundled with three-globe examples.
+const EARTH_TEXTURE_URL =
+  'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
+const EARTH_BUMP_URL =
+  'https://unpkg.com/three-globe/example/img/earth-topology.png';
 
 interface WeatherGlobeProps {
   stations: WeatherStationMetadata[];
@@ -12,12 +19,6 @@ interface WeatherGlobeProps {
   /** Optional override for highlighted (selected) station pubkey. */
   highlightedPubkey?: string | null;
 }
-
-// Day texture only — always fully lit, matches the light theme.
-const DAY_TEXTURE_URL =
-  'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
-const BUMP_TEXTURE_URL =
-  'https://unpkg.com/three-globe/example/img/earth-topology.png';
 
 interface StationPoint {
   lat: number;
@@ -51,20 +52,21 @@ export function WeatherGlobe({
     return () => ro.disconnect();
   }, []);
 
-  // Always-lit day material — MeshPhongMaterial with high ambient so the
-  // globe looks bright regardless of the scene's directional light position.
+  // Real Earth texture, self-lit so it stays bright on the light-themed canvas.
   const globeMaterial = useMemo(() => {
     const loader = new THREE.TextureLoader();
     loader.crossOrigin = 'anonymous';
-    const dayTexture = loader.load(DAY_TEXTURE_URL);
+    const dayTexture = loader.load(EARTH_TEXTURE_URL);
     dayTexture.colorSpace = THREE.SRGBColorSpace;
-    const bumpTexture = loader.load(BUMP_TEXTURE_URL);
+    const bumpTexture = loader.load(EARTH_BUMP_URL);
+
     return new THREE.MeshPhongMaterial({
       map: dayTexture,
       bumpMap: bumpTexture,
-      bumpScale: 0.5,
-      // Full ambient so no face is ever in shadow.
-      emissive: new THREE.Color(0x222222),
+      bumpScale: 0.45,
+      emissiveMap: dayTexture,
+      emissive: new THREE.Color(0xffffff),
+      emissiveIntensity: 0.5,
       shininess: 8,
     });
   }, []);
@@ -74,6 +76,7 @@ export function WeatherGlobe({
     return () => {
       (globeMaterial.map as THREE.Texture | null)?.dispose();
       (globeMaterial.bumpMap as THREE.Texture | null)?.dispose();
+      (globeMaterial.emissiveMap as THREE.Texture | null)?.dispose();
       globeMaterial.dispose();
     };
   }, [globeMaterial]);
@@ -94,10 +97,10 @@ export function WeatherGlobe({
     controls.zoomSpeed = 0.9;
     controls.autoRotate = true;
     controls.autoRotateSpeed = 0.35;
-    controls.minDistance = 180;
+    controls.minDistance = 120;
     controls.maxDistance = 700;
-    // Initial view: tilted slightly so the user sees both poles a little
-    globe.pointOfView({ lat: 18, lng: 12, altitude: 2.4 }, 0);
+    // Initial view: close enough that the planet dominates the viewport.
+    globe.pointOfView({ lat: 20, lng: -30, altitude: 0.85 }, 0);
   }, [size.width, size.height]);
 
   // Pause auto-rotation while the user is interacting.
@@ -167,10 +170,8 @@ export function WeatherGlobe({
         animateIn={false}
         backgroundColor="rgba(0,0,0,0)"
         globeMaterial={globeMaterial}
-        showAtmosphere
-        atmosphereColor="#f97316"
-        atmosphereAltitude={0.12}
-        // Stations as bright orange dots sitting just above the surface
+        showAtmosphere={false}
+        // Stations as maroon dots sitting just above the surface
         pointsData={points}
         pointLat={(d) => (d as StationPoint).lat}
         pointLng={(d) => (d as StationPoint).lng}
@@ -182,8 +183,8 @@ export function WeatherGlobe({
         pointColor={(d) => {
           const p = d as StationPoint;
           return p.station.pubkey === highlightedPubkey
-            ? '#ffd28a'
-            : '#ff7a1a';
+            ? brandColors.orange
+            : brandColors.maroon;
         }}
         pointResolution={18}
         pointsMerge={false}
@@ -212,25 +213,27 @@ export function WeatherGlobe({
         ringPropagationSpeed={1.4}
         ringRepeatPeriod={2400}
         ringResolution={64}
-        ringColor={() => (t: number) =>
-          `rgba(255, 122, 26, ${Math.max(0, (1 - t) * 0.85)})`}
+        ringColor={() => (t: number) => {
+          const alpha = Math.max(0, (1 - t) * 0.55);
+          return `hsla(348, 58%, 48%, ${alpha})`;
+        }}
       />
 
       {/* Hover tooltip rendered as a normal React component so it picks up
           all of the project's brand styling. */}
       {hovered && (
         <div
-          className="pointer-events-none absolute z-30 -translate-x-1/2 -translate-y-[calc(100%+18px)] rounded-lg border border-primary/40 bg-background/95 px-4 py-3 text-sm text-foreground shadow-2xl shadow-black/40 backdrop-blur"
+          className="pointer-events-none absolute z-30 -translate-x-1/2 -translate-y-[calc(100%+18px)] rounded-lg border border-border bg-background/95 px-4 py-3 text-sm text-foreground shadow-2xl shadow-black/40 backdrop-blur"
           style={{
             left: hovered.screen.x,
             top: hovered.screen.y,
             maxWidth: 260,
           }}
         >
-          <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-primary">
+          <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-brand-maroon">
             <span className="relative inline-flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-70 animate-ping" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+              <span className="absolute inline-flex h-full w-full rounded-full bg-brand-maroon opacity-70 animate-ping" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-maroon" />
             </span>
             Relaying
           </div>
@@ -256,7 +259,7 @@ export function WeatherGlobe({
       {points.length === 0 && (
         <div className="pointer-events-none absolute bottom-8 left-1/2 z-20 -translate-x-1/2">
           <div className="pointer-events-auto rounded-full border border-border bg-background/80 px-4 py-2 text-xs text-muted-foreground backdrop-blur">
-            <span className="font-mono uppercase tracking-widest text-primary">
+            <span className="font-mono uppercase tracking-widest text-foreground">
               No stations yet
             </span>
             <span className="mx-2 text-border">·</span>

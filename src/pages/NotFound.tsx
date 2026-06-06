@@ -30,7 +30,7 @@ const NotFound = () => {
         <div className="pointer-events-none absolute inset-0 bg-grid opacity-25" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,var(--background)_70%)]" />
         <div className="relative text-center">
-          <BrandMark className="mx-auto h-14 w-14 text-primary" />
+          <BrandMark className="mx-auto h-14 w-14" static />
           <p className="mt-8 font-mono text-[10px] uppercase tracking-[0.28em] text-primary">
             404 · no signal
           </p>

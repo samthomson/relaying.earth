@@ -37,13 +37,13 @@ const Index = () => {
         />
 
         {/* Bottom-left: title + CTA */}
-        <div className="pointer-events-none absolute bottom-8 left-8 z-10 sm:bottom-12 sm:left-12">
+        <div className="pointer-events-none absolute bottom-8 left-8 z-10 max-w-md rounded-2xl bg-background/70 px-5 py-4 shadow-sm backdrop-blur-md sm:bottom-12 sm:left-12">
           <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
             Live · Decentralised · Open
           </p>
           <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
             The planet,{' '}
-            <span className="text-primary">relayed.</span>
+            <span className="text-brand-maroon">relayed.</span>
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Nostr-powered weather stations broadcasting in real time.
@@ -62,7 +62,7 @@ const Index = () => {
         </div>
 
         {/* Bottom-right: station count */}
-        <div className="pointer-events-none absolute bottom-8 right-8 z-10 text-right sm:bottom-12 sm:right-12">
+        <div className="pointer-events-none absolute bottom-8 right-8 z-10 rounded-2xl bg-background/70 px-5 py-4 text-right shadow-sm backdrop-blur-md sm:bottom-12 sm:right-12">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
             Stations online
           </p>
