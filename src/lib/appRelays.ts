@@ -26,9 +26,20 @@ export function isDefaultRelay(url: string): boolean {
 /**
  * Initial relay config for new installs: only the project's relay is on.
  */
+export const WEATHER_RELAY_URL = 'wss://relay.relaying.earth';
+
+/**
+ * General-purpose relays for NIP-46 signer handshakes. The weather relay
+ * blocks kind 24133, so bunker / nostrconnect must not use it.
+ */
+export const NIP46_RELAYS = [
+  'wss://relay.ditto.pub',
+  'wss://relay.primal.net',
+] as const;
+
 export const APP_RELAYS: RelayMetadata = {
   relays: [
-    { url: 'wss://relay.relaying.earth', read: true, write: true },
+    { url: WEATHER_RELAY_URL, read: true, write: true },
   ],
   updatedAt: 0,
 };

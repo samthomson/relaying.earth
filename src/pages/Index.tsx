@@ -23,13 +23,13 @@ const Index = () => {
   const { data: onlineCount } = useOnlineStationCount();
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background">
+    <div className="flex min-h-dvh flex-col bg-background md:h-screen md:overflow-hidden">
       <div className="shrink-0">
         <Navbar />
       </div>
 
       {/* Globe fills remaining viewport */}
-      <div className="relative min-h-0 flex-1">
+      <div className="relative min-h-[min(100dvh,720px)] flex-1 md:min-h-0">
         <WeatherGlobe
           stations={stations || []}
           onStationClick={setSelectedStation}
@@ -56,7 +56,7 @@ const Index = () => {
               </Link>
             </Button>
           </div>
-          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground/60">
+          <p className="mt-4 hidden font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground/60 sm:block">
             Drag to spin · scroll to zoom · click a station
           </p>
         </div>

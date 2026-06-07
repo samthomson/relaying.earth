@@ -6,7 +6,7 @@ import {
   useNostrLogin,
 } from '@nostrify/react/login';
 import { useAppContext } from '@/hooks/useAppContext';
-import { APP_RELAYS } from '@/lib/appRelays';
+import { NIP46_RELAYS, WEATHER_RELAY_URL } from '@/lib/appRelays';
 
 // NOTE: This file should not be edited except for adding new login methods.
 
@@ -47,16 +47,18 @@ export function useLoginActions() {
       const login = await NLogin.fromNostrConnect(params, nostr, { signal, onStatus });
       addLogin(login);
     },
-    // Get the relay URLs for NIP-46 nostrconnect communication
+    // Relays embedded in the nostrconnect QR — both this client and the remote
+    // signer (Amber, etc.) use them for the NIP-46 handshake. Separate from
+    // bunker:// URIs, where the signer app picks its own relay(s).
+    //
+    // User-enabled write relays are included (minus the weather relay, which
+    // blocks kind 24133). Known general-purpose relays are always added so
+    // the handshake works even on a fresh install.
     getRelayUrls(): string[] {
-      const relays = config.relayMetadata.relays
-        .filter((r) => r.write)
+      const userRelays = config.relayMetadata.relays
+        .filter((r) => r.write && r.url !== WEATHER_RELAY_URL)
         .map((r) => r.url);
-      // Fall back to the app default relays if the user has none configured,
-      // so the remote signer has multiple connection options during handshake.
-      return relays.length > 0
-        ? relays
-        : APP_RELAYS.relays.filter((r) => r.write).map((r) => r.url);
+      return [...new Set([...userRelays, ...NIP46_RELAYS])];
     },
     // Log out the current user
     async logout(): Promise<void> {

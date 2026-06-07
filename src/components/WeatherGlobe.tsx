@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { Link } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { brandColors } from '@/lib/brandColors';
 import type { WeatherStationMetadata } from '@/lib/weatherUtils';
 
@@ -31,6 +32,7 @@ export function WeatherGlobe({
   onStationClick,
   highlightedPubkey = null,
 }: WeatherGlobeProps) {
+  const isMobile = useIsMobile();
   const containerRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const [size, setSize] = useState({ width: 800, height: 600 });
@@ -99,9 +101,11 @@ export function WeatherGlobe({
     controls.autoRotateSpeed = 0.35;
     controls.minDistance = 120;
     controls.maxDistance = 700;
+    // On touch devices, disable drag-to-rotate so vertical swipes scroll the page.
+    controls.enableRotate = !isMobile;
     // Initial view: close enough that the planet dominates the viewport.
     globe.pointOfView({ lat: 20, lng: -30, altitude: 0.85 }, 0);
-  }, [size.width, size.height]);
+  }, [size.width, size.height, isMobile]);
 
   // Pause auto-rotation while the user is interacting.
   useEffect(() => {
@@ -162,7 +166,10 @@ export function WeatherGlobe({
   }, [hovered?.station.pubkey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div ref={containerRef} className="relative h-full w-full overflow-hidden">
+    <div
+      ref={containerRef}
+      className="relative h-full w-full overflow-hidden max-md:touch-pan-y"
+    >
       <Globe
         ref={globeRef}
         width={size.width}
