@@ -8,7 +8,6 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -20,8 +19,11 @@ import {
 } from '@/components/ui/select';
 
 import { useWeatherStations } from '@/hooks/useWeatherStations';
+import { useLatestReadingsForStations } from '@/hooks/useLatestReadingsForStations';
+import { ReadingsTable } from '@/components/ReadingsTable';
 import { getSensorName } from '@/lib/weatherUtils';
-import type { WeatherStationMetadata } from '@/lib/weatherUtils';
+import type { WeatherStationMetadata, WeatherReading } from '@/lib/weatherUtils';
+import { formatRelativeTime } from '@/lib/timeUtils';
 
 type SortKey = 'sensors' | 'name' | 'recent';
 
@@ -33,6 +35,12 @@ const StationListPage = () => {
   });
 
   const { data: stations, isLoading } = useWeatherStations();
+  const stationPubkeys = useMemo(
+    () => stations?.map((station) => station.pubkey) ?? [],
+    [stations],
+  );
+  const { data: latestReadings, isLoading: latestReadingsLoading } =
+    useLatestReadingsForStations(stationPubkeys);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSensor, setSelectedSensor] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('sensors');
@@ -75,7 +83,11 @@ const StationListPage = () => {
         );
         break;
       case 'recent':
-        sorted.sort((a, b) => b.event.created_at - a.event.created_at);
+        sorted.sort((a, b) => {
+          const aTs = latestReadings?.[a.pubkey]?.timestamp ?? a.event.created_at;
+          const bTs = latestReadings?.[b.pubkey]?.timestamp ?? b.event.created_at;
+          return bTs - aTs;
+        });
         break;
       case 'sensors':
       default:
@@ -83,7 +95,7 @@ const StationListPage = () => {
         break;
     }
     return sorted;
-  }, [stations, searchQuery, selectedSensor, sortKey]);
+  }, [stations, searchQuery, selectedSensor, sortKey, latestReadings]);
 
   const activeFilterCount =
     (searchQuery ? 1 : 0) + (selectedSensor ? 1 : 0);
@@ -229,7 +241,12 @@ const StationListPage = () => {
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filteredStations.map((station) => (
-              <StationListCard key={station.pubkey} station={station} />
+              <StationListCard
+                key={station.pubkey}
+                station={station}
+                latestReading={latestReadings?.[station.pubkey] ?? null}
+                readingsLoading={latestReadingsLoading}
+              />
             ))}
           </div>
         )}
@@ -240,7 +257,15 @@ const StationListPage = () => {
   );
 };
 
-function StationListCard({ station }: { station: WeatherStationMetadata }) {
+function StationListCard({
+  station,
+  latestReading,
+  readingsLoading,
+}: {
+  station: WeatherStationMetadata;
+  latestReading: WeatherReading | null;
+  readingsLoading: boolean;
+}) {
   const npub = nip19.npubEncode(station.pubkey);
   const okSensors = station.sensors.filter(
     (s) =>
@@ -249,20 +274,22 @@ function StationListCard({ station }: { station: WeatherStationMetadata }) {
       ),
   ).length;
 
+  const readingLabel = readingsLoading
+    ? '…'
+    : latestReading
+      ? formatRelativeTime(latestReading.timestamp)
+      : 'No readings';
+
   return (
     <Link to={`/${npub}`} className="group">
       <Card className="relative h-full overflow-hidden border-border/70 bg-card/60 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5">
-        <CardContent className="flex h-full flex-col gap-4 p-5">
+        <CardContent className="flex h-full flex-col gap-3 p-5">
           <div className="flex items-start justify-between gap-3">
             <h3 className="line-clamp-2 font-display text-lg font-semibold leading-tight">
               {station.name || 'Unnamed station'}
             </h3>
-            <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-mono uppercase tracking-widest text-primary">
-              <span className="relative inline-flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-70 animate-ping" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
-              </span>
-              live
+            <span className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              {readingLabel}
             </span>
           </div>
 
@@ -273,36 +300,31 @@ function StationListCard({ station }: { station: WeatherStationMetadata }) {
           )}
 
           <div className="mt-auto space-y-3">
-            <div className="flex flex-wrap gap-1.5">
-              {station.sensors.slice(0, 6).map((sensor, idx) => (
-                <Badge
-                  key={`${sensor.type}-${idx}`}
-                  variant="outline"
-                  className="border-border/80 bg-muted/40 text-[11px] text-foreground"
-                >
-                  {getSensorName(sensor.type)}
-                </Badge>
-              ))}
-              {station.sensors.length > 6 && (
-                <Badge variant="outline" className="border-border/80 bg-muted/40 text-[11px] text-muted-foreground">
-                  +{station.sensors.length - 6}
-                </Badge>
-              )}
-            </div>
+            {readingsLoading ? (
+              <Skeleton className="h-16 w-full rounded-md" />
+            ) : latestReading ? (
+              <ReadingsTable
+                rows={[
+                  {
+                    id: station.pubkey,
+                    readings: latestReading.readings,
+                  },
+                ]}
+              />
+            ) : (
+              <p className="text-xs text-muted-foreground">No readings yet.</p>
+            )}
 
-            <div className="grid grid-cols-3 gap-2 border-t border-border/70 pt-3 text-[11px] font-mono uppercase tracking-widest text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <MapPin className="h-3 w-3" />
+            <div className="flex items-center justify-between gap-3 border-t border-border/70 pt-3 text-[11px] font-mono uppercase tracking-widest text-muted-foreground">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <MapPin className="h-3 w-3 shrink-0" />
                 <span className="truncate">
-                  {station.geohash ? station.geohash : '—'}
+                  {station.geohash || '—'}
                 </span>
               </div>
-              <div>
-                {okSensors}/{station.sensors.length} ok
-              </div>
-              <div className="text-right">
-                {station.connectivity || '—'}
-              </div>
+              <span className="shrink-0">
+                {okSensors}/{station.sensors.length} sensors
+              </span>
             </div>
           </div>
         </CardContent>

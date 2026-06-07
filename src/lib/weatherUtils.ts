@@ -191,6 +191,50 @@ export function getSensorName(type: string): string {
   return names[type] || type;
 }
 
+/** Abbreviated sensor label for compact layouts. */
+export function getSensorShortName(type: string): string {
+  const names: Record<string, string> = {
+    temp: 'Temp',
+    humidity: 'Hum',
+    pm1: 'PM1',
+    pm25: 'PM2.5',
+    pm10: 'PM10',
+    air_quality: 'AQ',
+    light: 'Light',
+    co2: 'CO₂',
+    gas: 'TVOC',
+    carbon_monoxide: 'CO',
+    pressure: 'Press',
+    rain: 'Rain',
+  };
+  return names[type] || type;
+}
+
+/** Preferred column order for reading tables. */
+export const SENSOR_COLUMN_ORDER = [
+  'temp',
+  'humidity',
+  'pressure',
+  'light',
+  'rain',
+  'pm1',
+  'pm25',
+  'pm10',
+  'air_quality',
+  'co2',
+  'gas',
+  'carbon_monoxide',
+] as const;
+
+export function sortSensorTypes(types: Iterable<string>): string[] {
+  const order = new Map<string, number>(
+    SENSOR_COLUMN_ORDER.map((type, index) => [type, index]),
+  );
+  return [...new Set(types)].sort(
+    (a, b) => (order.get(a) ?? 999) - (order.get(b) ?? 999),
+  );
+}
+
 /**
  * Get a human-readable sensor unit
  */

@@ -25,32 +25,40 @@ import {
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { useWeatherStation } from '@/hooks/useWeatherStations';
 import { useStationReadings } from '@/hooks/useStationReadings';
 import { useWeatherFormatters } from '@/hooks/useWeatherFormatters';
+import { LatestReadingList, SensorSummary } from '@/components/LatestReadingList';
+import { ReadingsTable } from '@/components/ReadingsTable';
+import { IdentityRows } from '@/components/IdentityRows';
+import { SensorInterpretationGuide } from '@/components/SensorInterpretationGuide';
 import { getSensorName } from '@/lib/weatherUtils';
+import {
+  CHART_TIME_RANGE_CONFIG,
+  downsampleChartPoints,
+  formatChartAxisTick,
+  type ChartTimeRange,
+} from '@/lib/chartUtils';
 import {
   formatRelativeTime,
   formatAbsoluteTime,
 } from '@/lib/timeUtils';
 
-type TimeRange = '1h' | '24h' | '7d';
-
-const TIME_RANGE_CONFIG: Record<TimeRange, { seconds: number; readingLimit: number; label: string }> = {
-  '1h': { seconds: 3600, readingLimit: 120, label: 'Last hour' },
-  '24h': { seconds: 86400, readingLimit: 300, label: 'Last 24h' },
-  '7d': { seconds: 604800, readingLimit: 1500, label: 'Last 7 days' },
-};
-
 const StationDetailPage = () => {
   const { nip19: nip19Param } = useParams<{ nip19: string }>();
   const { formatSensorValue, getSensorUnit, toDisplayNumber } = useWeatherFormatters();
-  const [timeRange, setTimeRange] = useState<TimeRange>('24h');
+  const [timeRange, setTimeRange] = useState<ChartTimeRange>('24h');
   const [activeSensor, setActiveSensor] = useState<string | null>(null);
+  const [chartWindow, setChartWindow] = useState(() => {
+    const now = Math.floor(Date.now() / 1000);
+    return {
+      since: now - CHART_TIME_RANGE_CONFIG['24h'].seconds,
+      until: now,
+    };
+  });
 
   // Decode NIP-19 identifier
   let pubkey: string | undefined;
@@ -67,16 +75,14 @@ const StationDetailPage = () => {
     // Invalid NIP-19
   }
 
-  // Lower bound of the readings query; kept in state so rendering stays pure
-  // (no Date.now() called during render). It is recomputed whenever the user
-  // changes the time range and refreshed every minute so the chart window
-  // slides forward as new readings come in.
-  const [since, setSince] = useState(
-    () => Math.floor(Date.now() / 1000) - TIME_RANGE_CONFIG[timeRange].seconds,
-  );
+  const { since, until: chartUntil } = chartWindow;
   useEffect(() => {
     const update = () => {
-      setSince(Math.floor(Date.now() / 1000) - TIME_RANGE_CONFIG[timeRange].seconds);
+      const now = Math.floor(Date.now() / 1000);
+      setChartWindow({
+        since: now - CHART_TIME_RANGE_CONFIG[timeRange].seconds,
+        until: now,
+      });
     };
     update();
     const id = window.setInterval(update, 60 * 1000);
@@ -87,7 +93,7 @@ const StationDetailPage = () => {
   const { data: readings, isLoading: readingsLoading } = useStationReadings({
     pubkey,
     since,
-    limit: TIME_RANGE_CONFIG[timeRange].readingLimit,
+    limit: CHART_TIME_RANGE_CONFIG[timeRange].readingLimit,
   });
 
   useSeoMeta({
@@ -113,26 +119,14 @@ const StationDetailPage = () => {
 
   const chartData = useMemo(() => {
     if (!readings || !selectedSensor) return [];
-    return readings
-      .map((reading) => {
-        const point = reading.readings.find((r) => r.type === selectedSensor);
-        if (!point) return null;
-        const value = toDisplayNumber(selectedSensor, point.value);
-        if (value === null || Number.isNaN(value)) return null;
-        return {
-          timestamp: reading.timestamp,
-          value,
-          label: new Date(reading.timestamp * 1000).toLocaleString([], {
-            month: timeRange === '7d' ? 'short' : undefined,
-            day: timeRange === '7d' ? '2-digit' : undefined,
-            hour: '2-digit',
-            minute: '2-digit',
-          }),
-        };
-      })
-      .filter((p): p is { timestamp: number; value: number; label: string } => p !== null)
-      .sort((a, b) => a.timestamp - b.timestamp);
-  }, [readings, selectedSensor, timeRange, toDisplayNumber]);
+    return downsampleChartPoints(
+      readings,
+      selectedSensor,
+      since,
+      CHART_TIME_RANGE_CONFIG[timeRange].bucketSeconds,
+      toDisplayNumber,
+    );
+  }, [readings, selectedSensor, since, timeRange, toDisplayNumber]);
 
   const latestReading = readings?.[0];
 
@@ -203,6 +197,8 @@ const StationDetailPage = () => {
         (st) => st.type === s.type && st.model === s.model && st.status !== 'ok',
       ),
   ).length;
+
+  const npub = nip19.npubEncode(station.pubkey);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -301,7 +297,11 @@ const StationDetailPage = () => {
         <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
           {/* Left rail */}
           <div className="space-y-4">
-            <Panel icon={<Radio className="h-3.5 w-3.5" />} title="Latest reading">
+            <Panel
+              icon={<Radio className="h-3.5 w-3.5" />}
+              title="Latest reading"
+              action={<SensorInterpretationGuide />}
+            >
               {readingsLoading ? (
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-2/3" />
@@ -313,21 +313,7 @@ const StationDetailPage = () => {
                   <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                     {formatRelativeTime(latestReading.timestamp)}
                   </p>
-                  <ul className="space-y-2">
-                    {latestReading.readings.map((reading, idx) => (
-                      <li
-                        key={`${reading.type}-${idx}`}
-                        className="flex items-baseline justify-between border-b border-border/40 pb-1.5 text-sm last:border-b-0 last:pb-0"
-                      >
-                        <span className="text-muted-foreground">
-                          {getSensorName(reading.type)}
-                        </span>
-                        <span className="font-display font-semibold text-foreground">
-                          {formatSensorValue(reading.type, reading.value)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  <LatestReadingList readings={latestReading.readings} />
                 </>
               ) : (
                 <p className="text-xs text-muted-foreground">No readings yet.</p>
@@ -335,55 +321,11 @@ const StationDetailPage = () => {
             </Panel>
 
             <Panel icon={<Cpu className="h-3.5 w-3.5" />} title="Sensors">
-              {station.sensors.length === 0 ? (
-                <p className="text-xs text-muted-foreground">None declared.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {station.sensors.map((sensor, idx) => {
-                    const status = station.sensorStatuses.find(
-                      (s) => s.type === sensor.type && s.model === sensor.model,
-                    );
-                    const ok = !status || status.status === 'ok';
-                    return (
-                      <li
-                        key={`${sensor.type}-${idx}`}
-                        className="flex items-center justify-between text-sm"
-                      >
-                        <div className="min-w-0">
-                          <div className="truncate">{getSensorName(sensor.type)}</div>
-                          <div className="truncate font-mono text-[11px] text-muted-foreground">
-                            {sensor.model}
-                          </div>
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className={
-                            ok
-                              ? 'border-primary/30 bg-primary/10 text-primary'
-                              : 'border-destructive/40 bg-destructive/10 text-destructive'
-                          }
-                        >
-                          {ok ? 'OK' : 'Fault'}
-                        </Badge>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+              <SensorSummary sensorCount={station.sensors.length} okCount={okSensors} />
             </Panel>
 
             <Panel icon={<MapPin className="h-3.5 w-3.5" />} title="Identity">
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Pubkey</span>
-                  <span className="font-mono text-[11px]">
-                    {station.pubkey.slice(0, 8)}…{station.pubkey.slice(-6)}
-                  </span>
-                </div>
-                <div className="rounded-md border border-border/60 bg-muted/40 p-2 font-mono text-[10px] break-all text-muted-foreground">
-                  {nip19.npubEncode(station.pubkey)}
-                </div>
-              </div>
+              <IdentityRows pubkey={station.pubkey} npub={npub} />
             </Panel>
           </div>
 
@@ -397,7 +339,7 @@ const StationDetailPage = () => {
                     History
                   </div>
                   <div className="flex gap-1 rounded-md border border-border bg-muted/40 p-0.5">
-                    {(Object.keys(TIME_RANGE_CONFIG) as TimeRange[]).map((k) => (
+                    {(Object.keys(CHART_TIME_RANGE_CONFIG) as ChartTimeRange[]).map((k) => (
                       <button
                         key={k}
                         type="button"
@@ -466,7 +408,13 @@ const StationDetailPage = () => {
                           vertical={false}
                         />
                         <XAxis
-                          dataKey="label"
+                          type="number"
+                          dataKey="timestamp"
+                          domain={[since, chartUntil]}
+                          scale="time"
+                          tickFormatter={(ts) =>
+                            formatChartAxisTick(Number(ts), timeRange)
+                          }
                           tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
                           axisLine={{ stroke: 'var(--border)' }}
                           tickLine={false}
@@ -493,6 +441,9 @@ const StationDetailPage = () => {
                           }}
                           labelStyle={{ color: 'var(--foreground)' }}
                           itemStyle={{ color: 'var(--primary)' }}
+                          labelFormatter={(label) =>
+                            formatAbsoluteTime(Number(label))
+                          }
                           formatter={(value) => [
                             formatSensorValue(
                               selectedSensor,
@@ -519,9 +470,12 @@ const StationDetailPage = () => {
             {/* Recent events table */}
             <Card className="bg-card/60">
               <CardContent className="p-5">
-                <div className="mb-3 flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.24em] text-muted-foreground">
-                  <Calendar className="h-3.5 w-3.5 text-primary" />
-                  Recent events
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.24em] text-muted-foreground">
+                    <Calendar className="h-3.5 w-3.5 text-primary" />
+                    Recent events
+                  </div>
+                  <SensorInterpretationGuide />
                 </div>
                 {readingsLoading ? (
                   <div className="space-y-2">
@@ -534,54 +488,16 @@ const StationDetailPage = () => {
                     No events in this window.
                   </p>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border/60 text-left text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-                          <th className="py-2 pr-4 font-normal">When</th>
-                          <th className="py-2 pr-4 font-normal">Readings</th>
-                          <th className="py-2 font-normal text-right">Event</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {readings.slice(0, 12).map((reading) => (
-                          <tr
-                            key={reading.event.id}
-                            className="border-b border-border/40 last:border-b-0"
-                          >
-                            <td className="py-2 pr-4 align-top">
-                              <div className="font-medium">
-                                {formatRelativeTime(reading.timestamp)}
-                              </div>
-                              <div className="font-mono text-[10px] text-muted-foreground">
-                                {formatAbsoluteTime(reading.timestamp)}
-                              </div>
-                            </td>
-                            <td className="py-2 pr-4">
-                              <div className="flex flex-wrap gap-1.5">
-                                {reading.readings.map((r, idx) => (
-                                  <span
-                                    key={`${r.type}-${idx}`}
-                                    className="inline-flex items-baseline gap-1 rounded border border-border/70 bg-background px-1.5 py-0.5 text-[11px]"
-                                  >
-                                    <span className="text-muted-foreground">
-                                      {getSensorName(r.type)}
-                                    </span>
-                                    <span className="font-mono font-semibold text-foreground">
-                                      {formatSensorValue(r.type, r.value)}
-                                    </span>
-                                  </span>
-                                ))}
-                              </div>
-                            </td>
-                            <td className="py-2 text-right align-top font-mono text-[10px] text-muted-foreground">
-                              {reading.event.id.slice(0, 8)}…
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <ReadingsTable
+                    layout="events"
+                    rows={readings.slice(0, 12).map((reading) => ({
+                      id: reading.event.id,
+                      timestamp: reading.timestamp,
+                      readings: reading.readings,
+                      eventId: reading.event.id,
+                    }))}
+                    sensorTypes={sensorTypes}
+                  />
                 )}
               </CardContent>
             </Card>
@@ -622,18 +538,23 @@ function StatTile({
 function Panel({
   icon,
   title,
+  action,
   children,
 }: {
   icon: React.ReactNode;
   title: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <Card className="bg-card/60">
       <CardContent className="p-4">
-        <div className="mb-3 flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.24em] text-muted-foreground">
-          {icon}
-          {title}
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.24em] text-muted-foreground">
+            {icon}
+            {title}
+          </div>
+          {action}
         </div>
         {children}
       </CardContent>
