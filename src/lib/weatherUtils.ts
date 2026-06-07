@@ -207,7 +207,7 @@ export function getSensorUnit(type: string): string {
     gas: 'ppb',
     carbon_monoxide: 'ppm',
     pressure: 'hPa',
-    rain: 'mm',
+    rain: '',
   };
   return units[type] || '';
 }

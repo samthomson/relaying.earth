@@ -102,7 +102,7 @@ Include a reading tag only when the sensor produced a valid value; otherwise omi
 | `gas` | SGP30 | Total volatile organic compounds (TVOC) in ppb |
 | `carbon_monoxide` | MQ-7 | CO concentration in ppm |
 | `pressure` | BME280, BME680 | Atmospheric pressure in hPa |
-| `rain` | MH-RD | Rain detection (boolean or mm) |
+| `rain` | MH-RD | Rain intensity score from the analog output (typically 0–4000; higher = drier) |
 
 Additional sensor types can be added as needed. The third parameter (model) is always required to enable cross-station comparison and quality control.
 

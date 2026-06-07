@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils';
 import { BrandMark } from '@/components/BrandMark';
 import { Button } from '@/components/ui/button';
 import { AppSettingsDialog } from '@/components/AppSettingsDialog';
-import { UnitSelector } from '@/components/UnitSelector';
 
 interface NavbarProps {
   /**
@@ -78,7 +77,6 @@ export function Navbar({ floating = false, dark = false }: NavbarProps) {
               </NavLink>
             );
           })}
-          <UnitSelector className="hidden sm:flex" />
           <AppSettingsDialog
             open={settingsOpen}
             onOpenChange={setSettingsOpen}

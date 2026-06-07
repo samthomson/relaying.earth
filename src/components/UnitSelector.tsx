@@ -14,9 +14,9 @@ interface UnitSelectorProps {
   size?: 'sm' | 'default';
 }
 
-const UNIT_OPTIONS: { value: UnitSystem; label: string; short: string }[] = [
-  { value: 'metric', label: 'Metric', short: '°C' },
-  { value: 'imperial', label: 'US customary', short: '°F' },
+const UNIT_OPTIONS: { value: UnitSystem; label: string }[] = [
+  { value: 'metric', label: 'Metric units' },
+  { value: 'imperial', label: 'American units' },
 ];
 
 export function UnitSelector({ className, size = 'sm' }: UnitSelectorProps) {
@@ -27,10 +27,10 @@ export function UnitSelector({ className, size = 'sm' }: UnitSelectorProps) {
     <Select value={units} onValueChange={(v) => setUnits(v as UnitSystem)}>
       <SelectTrigger
         size={size}
-        className={cn('min-w-[5.5rem] font-mono text-xs', className)}
+        className={cn('min-w-[9.5rem] text-xs', className)}
         aria-label="Measurement units"
       >
-        <SelectValue>{current.short}</SelectValue>
+        <SelectValue>{current.label}</SelectValue>
       </SelectTrigger>
       <SelectContent>
         {UNIT_OPTIONS.map((option) => (

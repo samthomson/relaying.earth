@@ -7,8 +7,8 @@ export function GeneralSettings() {
       <div className="space-y-2">
         <Label htmlFor="unit-system">Measurement units</Label>
         <p className="text-sm text-muted-foreground">
-          Weather readings are stored in metric on Nostr. Choose how values are
-          displayed across the site.
+          Temperature and pressure convert between metric and US customary.
+          Other sensors (rain score, humidity, PM, etc.) display as published.
         </p>
         <UnitSelector size="default" className="w-full max-w-xs" />
       </div>

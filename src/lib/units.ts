@@ -5,20 +5,17 @@ export type UnitSystem = 'metric' | 'imperial';
 const IMPERIAL_UNITS: Record<string, string> = {
   temp: '°F',
   pressure: 'inHg',
-  rain: 'in',
 };
 
 /** Sensors stored in metric on Nostr; only these convert for imperial display. */
 const CONVERTIBLE: Record<string, (n: number) => number> = {
   temp: (c) => (c * 9) / 5 + 32,
   pressure: (hpa) => hpa * 0.02953,
-  rain: (mm) => mm * 0.0393701,
 };
 
 const DISPLAY_DECIMALS: Record<string, number> = {
   temp: 1,
   pressure: 2,
-  rain: 2,
 };
 
 export function getSensorUnit(type: string, units: UnitSystem): string {
