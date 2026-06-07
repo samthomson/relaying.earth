@@ -6,6 +6,7 @@ import { nip19 } from 'nostr-tools';
 
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { brandColors } from '@/lib/brandColors';
+import { cn } from '@/lib/utils';
 import type { WeatherStationMetadata } from '@/lib/weatherUtils';
 
 // NASA Blue Marble — real satellite imagery, bundled with three-globe examples.
@@ -40,6 +41,7 @@ export function WeatherGlobe({
     station: WeatherStationMetadata;
     screen: { x: number; y: number };
   } | null>(null);
+  const [texturesReady, setTexturesReady] = useState(false);
 
   // Container resize observer.
   useEffect(() => {
@@ -54,28 +56,57 @@ export function WeatherGlobe({
     return () => ro.disconnect();
   }, []);
 
-  // Real Earth texture, self-lit so it stays bright on the light-themed canvas.
+  // Brand-grey placeholder until textures arrive — avoids a black flash.
   const globeMaterial = useMemo(() => {
-    const loader = new THREE.TextureLoader();
-    loader.crossOrigin = 'anonymous';
-    const dayTexture = loader.load(EARTH_TEXTURE_URL);
-    dayTexture.colorSpace = THREE.SRGBColorSpace;
-    const bumpTexture = loader.load(EARTH_BUMP_URL);
-
+    const color = new THREE.Color().setHSL(220 / 360, 0.1, 0.78);
+    const emissive = new THREE.Color().setHSL(220 / 360, 0.1, 0.93);
     return new THREE.MeshPhongMaterial({
-      map: dayTexture,
-      bumpMap: bumpTexture,
-      bumpScale: 0.45,
-      emissiveMap: dayTexture,
-      emissive: new THREE.Color(0xffffff),
-      emissiveIntensity: 0.5,
-      shininess: 8,
+      color,
+      emissive,
+      emissiveIntensity: 0.2,
+      shininess: 6,
     });
   }, []);
 
-  // Dispose textures on unmount.
   useEffect(() => {
+    const loader = new THREE.TextureLoader();
+    loader.crossOrigin = 'anonymous';
+
+    let pending = 2;
+    const onTextureLoaded = () => {
+      pending -= 1;
+      if (pending === 0) setTexturesReady(true);
+    };
+
+    loader.load(
+      EARTH_TEXTURE_URL,
+      (dayTexture) => {
+        dayTexture.colorSpace = THREE.SRGBColorSpace;
+        globeMaterial.map = dayTexture;
+        globeMaterial.emissiveMap = dayTexture;
+        globeMaterial.emissive = new THREE.Color(0xffffff);
+        globeMaterial.emissiveIntensity = 0.5;
+        globeMaterial.needsUpdate = true;
+        onTextureLoaded();
+      },
+      undefined,
+      onTextureLoaded,
+    );
+
+    loader.load(
+      EARTH_BUMP_URL,
+      (bumpTexture) => {
+        globeMaterial.bumpMap = bumpTexture;
+        globeMaterial.bumpScale = 0.45;
+        globeMaterial.needsUpdate = true;
+        onTextureLoaded();
+      },
+      undefined,
+      onTextureLoaded,
+    );
+
     return () => {
+      setTexturesReady(false);
       (globeMaterial.map as THREE.Texture | null)?.dispose();
       (globeMaterial.bumpMap as THREE.Texture | null)?.dispose();
       (globeMaterial.emissiveMap as THREE.Texture | null)?.dispose();
@@ -225,6 +256,17 @@ export function WeatherGlobe({
           return `hsla(348, 58%, 48%, ${alpha})`;
         }}
       />
+
+      {/* Soft placeholder while textures stream in */}
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-0 transition-opacity duration-700',
+          texturesReady ? 'opacity-0' : 'opacity-100',
+        )}
+        aria-hidden
+      >
+        <div className="absolute left-1/2 top-1/2 h-[min(72vw,520px)] w-[min(72vw,520px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br from-muted via-muted-foreground/25 to-muted shadow-inner motion-safe:animate-pulse-slow" />
+      </div>
 
       {/* Hover tooltip rendered as a normal React component so it picks up
           all of the project's brand styling. */}

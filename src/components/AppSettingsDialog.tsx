@@ -18,10 +18,13 @@ interface AppSettingsDialogProps {
 }
 
 const tabTriggerClass = cn(
-  'h-9 flex-1 rounded-md border-0 px-4 text-sm font-medium shadow-none',
+  'h-auto border-0 p-0 shadow-none after:hidden',
+);
+
+const tabButtonClass = cn(
+  'settings-tab flex min-h-10 w-full items-center justify-center rounded-md px-4 py-2.5 text-sm font-medium',
   'text-muted-foreground transition-colors hover:text-foreground',
-  'data-[state=active]:bg-primary/10 data-[state=active]:font-semibold data-[state=active]:text-primary data-[state=active]:shadow-none',
-  'after:hidden',
+  'focus-visible:outline-none focus-visible:ring-0',
 );
 
 export function AppSettingsDialog({
@@ -33,24 +36,26 @@ export function AppSettingsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-h-[90vh] max-w-xl overflow-hidden sm:max-w-xl">
-        <DialogHeader>
+        <DialogHeader className="pb-2">
           <DialogTitle>Settings</DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="relays">
           <div className="overflow-hidden rounded-xl border border-border bg-card">
-            <div className="border-b border-border bg-muted/30 px-3 py-3">
-              <TabsList className="flex h-auto w-full gap-1 rounded-lg bg-muted/60 p-1">
-                <TabsTrigger value="relays" className={tabTriggerClass}>
+            <TabsList className="grid !h-auto w-full grid-cols-2 gap-1.5 rounded-none border-0 bg-muted p-1.5 shadow-none">
+              <TabsTrigger value="relays" asChild className={tabTriggerClass}>
+                <button type="button" className={tabButtonClass}>
                   Relays
-                </TabsTrigger>
-                <TabsTrigger value="general" className={tabTriggerClass}>
+                </button>
+              </TabsTrigger>
+              <TabsTrigger value="general" asChild className={tabTriggerClass}>
+                <button type="button" className={tabButtonClass}>
                   General
-                </TabsTrigger>
-              </TabsList>
-            </div>
+                </button>
+              </TabsTrigger>
+            </TabsList>
 
-            <div className="min-h-[28rem] overflow-y-auto p-4 transition-[min-height] duration-300 ease-in-out">
+            <div className="min-h-[28rem] overflow-y-auto px-4 py-4 transition-[min-height] duration-300 ease-in-out">
               <TabsContent value="relays" className="mt-0 outline-none">
                 <RelaySettings />
               </TabsContent>

@@ -8,6 +8,8 @@ export const brandColors = {
   purpleDark: 'hsl(275 45% 28%)',
   maroon: 'hsl(348 58% 48%)',
   grey: 'hsl(220 8% 42%)',
+  greyLight: 'hsl(220 10% 78%)',
+  greyMuted: 'hsl(220 10% 93%)',
   paper: 'hsl(0 0% 98%)',
   white: 'hsl(0 0% 100%)',
   foreground: 'hsl(24 10% 10%)',

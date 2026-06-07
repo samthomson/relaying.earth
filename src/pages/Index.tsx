@@ -36,8 +36,42 @@ const Index = () => {
           highlightedPubkey={selectedStation?.pubkey ?? null}
         />
 
-        {/* Bottom-left: title + CTA */}
-        <div className="pointer-events-none absolute bottom-8 left-8 z-10 max-w-md rounded-2xl bg-background/70 px-5 py-4 shadow-sm backdrop-blur-md sm:bottom-12 sm:left-12">
+        {/* Mobile: single full-width panel, no overlapping cards */}
+        <div className="pointer-events-none absolute inset-x-4 bottom-4 z-10 sm:hidden">
+          <div className="rounded-2xl bg-background/85 px-4 py-4 shadow-sm backdrop-blur-md">
+            <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+              Live · Decentralised · Open
+            </p>
+            <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-foreground">
+              The planet,{' '}
+              <span className="text-brand-maroon">relayed.</span>
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Nostr-powered weather stations broadcasting in real time.
+            </p>
+            <div className="mt-4 flex items-end justify-between gap-4">
+              <div className="pointer-events-auto min-w-0">
+                <Button asChild size="lg" className="w-full sm:w-auto">
+                  <Link to="/stations">
+                    Explore the network
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  Stations online
+                </p>
+                <p className="font-display text-3xl font-semibold tabular-nums text-foreground">
+                  {onlineCount ?? '—'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop: split corner panels */}
+        <div className="pointer-events-none absolute bottom-12 left-12 z-10 hidden max-w-md rounded-2xl bg-background/70 px-5 py-4 shadow-sm backdrop-blur-md sm:block">
           <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
             Live · Decentralised · Open
           </p>
@@ -56,13 +90,12 @@ const Index = () => {
               </Link>
             </Button>
           </div>
-          <p className="mt-4 hidden font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground/60 sm:block">
+          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground/60">
             Drag to spin · scroll to zoom · click a station
           </p>
         </div>
 
-        {/* Bottom-right: station count */}
-        <div className="pointer-events-none absolute bottom-8 right-8 z-10 rounded-2xl bg-background/70 px-5 py-4 text-right shadow-sm backdrop-blur-md sm:bottom-12 sm:right-12">
+        <div className="pointer-events-none absolute bottom-12 right-12 z-10 hidden rounded-2xl bg-background/70 px-5 py-4 text-right shadow-sm backdrop-blur-md sm:block">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
             Stations online
           </p>

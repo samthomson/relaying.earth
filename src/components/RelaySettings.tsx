@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 
 import { useAppContext } from '@/hooks/useAppContext';
 import { DEFAULT_RELAYS, isDefaultRelay } from '@/lib/appRelays';
@@ -29,10 +28,8 @@ export function RelaySettings() {
 
   const activeUrls = new Set(config.relayMetadata.relays.map((r) => r.url));
 
-  // Build the unified row list: defaults (in declared order) followed by any
-  // custom relays the user has added.
-  const rows: { url: string; note?: string; isDefault: boolean }[] = [
-    ...DEFAULT_RELAYS.map((d) => ({ ...d, isDefault: true })),
+  const rows: { url: string; isDefault: boolean }[] = [
+    ...DEFAULT_RELAYS.map((d) => ({ url: d.url, isDefault: true })),
     ...config.relayMetadata.relays
       .filter((r) => !isDefaultRelay(r.url))
       .map((r) => ({ url: r.url, isDefault: false })),
@@ -84,34 +81,17 @@ export function RelaySettings() {
 
   return (
     <div className="space-y-4">
-      <ul className="divide-y divide-border/60 overflow-hidden rounded-md border border-border/70 bg-muted/20">
+      <ul className="divide-y divide-border">
         {rows.map((row) => {
           const enabled = activeUrls.has(row.url);
           return (
-            <li key={row.url} className="flex items-center gap-3 px-3 py-3">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="truncate font-mono text-sm"
-                    title={row.url}
-                  >
-                    {displayRelayUrl(row.url)}
-                  </span>
-                  {row.isDefault && (
-                    <Badge
-                      variant="outline"
-                      className="border-border/80 bg-background text-[10px] font-mono uppercase tracking-widest text-muted-foreground"
-                    >
-                      default
-                    </Badge>
-                  )}
-                </div>
-                {row.note && (
-                  <div className="mt-0.5 text-[11px] text-muted-foreground">
-                    {row.note}
-                  </div>
-                )}
-              </div>
+            <li key={row.url} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+              <span
+                className="min-w-0 flex-1 truncate font-mono text-sm"
+                title={row.url}
+              >
+                {displayRelayUrl(row.url)}
+              </span>
               <Switch
                 checked={enabled}
                 onCheckedChange={(v) => setEnabled(row.url, v)}
@@ -122,7 +102,7 @@ export function RelaySettings() {
                   variant="ghost"
                   size="icon"
                   onClick={() => removeCustom(row.url)}
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
                   aria-label={`Remove ${row.url}`}
                 >
                   <X className="h-4 w-4" />
@@ -133,7 +113,7 @@ export function RelaySettings() {
         })}
       </ul>
 
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <div className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row">
         <Label htmlFor="new-relay-url" className="sr-only">
           Add a relay
         </Label>
@@ -150,7 +130,7 @@ export function RelaySettings() {
           }}
           className="font-mono"
         />
-        <Button onClick={handleAdd} disabled={!newRelayUrl.trim()} className="gap-2">
+        <Button onClick={handleAdd} disabled={!newRelayUrl.trim()} className="shrink-0 gap-2">
           <Plus className="h-4 w-4" />
           Add relay
         </Button>

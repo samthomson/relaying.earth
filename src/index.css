@@ -193,6 +193,14 @@
   }
 }
 
+@layer components {
+  .settings-tab[data-state='active'] {
+    background-color: color-mix(in oklab, var(--brand-maroon) 22%, var(--card)) !important;
+    color: var(--brand-maroon) !important;
+    font-weight: 600;
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
