@@ -42,6 +42,16 @@ function formatConvertedValue(type: string, num: number): string {
   return decimals !== undefined ? num.toFixed(decimals) : String(num);
 }
 
+export function formatDisplayNumber(
+  type: string,
+  displayNumber: number,
+  units: UnitSystem,
+): string {
+  const unit = getSensorUnit(type, units);
+  const formatted = formatConvertedValue(type, displayNumber);
+  return unit ? `${formatted} ${unit}` : formatted;
+}
+
 export function formatSensorValue(
   type: string,
   value: string,

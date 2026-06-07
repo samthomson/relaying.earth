@@ -36,7 +36,7 @@ interface StationHistoryChartProps {
   since: number;
   until: number;
   sensorTypes: string[];
-  formatSensorValue: (type: string, value: string) => string;
+  formatDisplayNumber: (type: string, displayNumber: number) => string;
   getSensorUnit: (type: string) => string;
   toDisplayNumber: (type: string, value: string) => number | null;
   onTimeRangeChange: (range: ChartTimeRange) => void;
@@ -49,7 +49,7 @@ export function StationHistoryChart({
   since,
   until,
   sensorTypes,
-  formatSensorValue,
+  formatDisplayNumber,
   getSensorUnit,
   toDisplayNumber,
   onTimeRangeChange,
@@ -244,7 +244,7 @@ export function StationHistoryChart({
                       return [formatRainChartTick(numeric), getSensorName(type)];
                     }
                     return [
-                      formatSensorValue(type, String(numeric)),
+                      formatDisplayNumber(type, numeric),
                       getSensorName(type),
                     ];
                   }}

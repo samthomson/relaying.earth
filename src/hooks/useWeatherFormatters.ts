@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { useAppContext } from '@/hooks/useAppContext';
 import {
   formatSensorValue as formatValue,
+  formatDisplayNumber as formatDisplayNum,
   getSensorUnit as getUnit,
   convertSensorNumber,
   type UnitSystem,
@@ -34,10 +35,16 @@ export function useWeatherFormatters() {
     [units],
   );
 
+  const formatDisplayNumber = useCallback(
+    (type: string, displayNumber: number) => formatDisplayNum(type, displayNumber, units),
+    [units],
+  );
+
   return {
     units,
     setUnits,
     formatSensorValue,
+    formatDisplayNumber,
     getSensorUnit,
     toDisplayNumber,
   };

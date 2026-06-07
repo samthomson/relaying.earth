@@ -42,7 +42,7 @@ import {
 
 const StationDetailPage = () => {
   const { nip19: nip19Param } = useParams<{ nip19: string }>();
-  const { formatSensorValue, getSensorUnit, toDisplayNumber } = useWeatherFormatters();
+  const { formatDisplayNumber, getSensorUnit, toDisplayNumber } = useWeatherFormatters();
   const [timeRange, setTimeRange] = useState<ChartTimeRange>('24h');
   const [chartWindow, setChartWindow] = useState(() => {
     const now = Math.floor(Date.now() / 1000);
@@ -352,7 +352,7 @@ const StationDetailPage = () => {
               since={since}
               until={chartUntil}
               sensorTypes={sensorTypes}
-              formatSensorValue={formatSensorValue}
+              formatDisplayNumber={formatDisplayNumber}
               getSensorUnit={getSensorUnit}
               toDisplayNumber={toDisplayNumber}
               onTimeRangeChange={setTimeRange}
