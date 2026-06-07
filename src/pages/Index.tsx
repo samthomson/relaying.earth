@@ -20,16 +20,16 @@ const Index = () => {
 
   const [selectedStation, setSelectedStation] = useState<WeatherStationMetadata | null>(null);
   const { data: stations } = useWeatherStations();
-  const { data: onlineCount } = useOnlineStationCount();
+  const { data: onlineCount, isLoading: onlineCountLoading } = useOnlineStationCount();
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background md:h-screen md:overflow-hidden">
+    <div className="flex h-dvh flex-col overflow-hidden bg-background">
       <div className="shrink-0">
         <Navbar />
       </div>
 
       {/* Globe fills remaining viewport */}
-      <div className="relative min-h-[min(100dvh,720px)] flex-1 md:min-h-0">
+      <div className="relative min-h-0 flex-1">
         <WeatherGlobe
           stations={stations || []}
           onStationClick={setSelectedStation}
@@ -62,9 +62,13 @@ const Index = () => {
                 <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                   Stations online
                 </p>
-                <p className="font-display text-3xl font-semibold tabular-nums text-foreground">
-                  {onlineCount ?? '—'}
-                </p>
+                {onlineCountLoading ? (
+                  <div className="mt-1 h-9 w-8 animate-pulse rounded bg-muted" />
+                ) : (
+                  <p className="font-display text-3xl font-semibold tabular-nums text-foreground">
+                    {onlineCount ?? 0}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -99,9 +103,13 @@ const Index = () => {
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
             Stations online
           </p>
-          <p className="font-display text-4xl font-semibold tabular-nums text-foreground sm:text-5xl">
-            {onlineCount ?? '—'}
-          </p>
+          {onlineCountLoading ? (
+            <div className="mt-1 ml-auto h-10 w-10 animate-pulse rounded bg-muted" />
+          ) : (
+            <p className="font-display text-4xl font-semibold tabular-nums text-foreground sm:text-5xl">
+              {onlineCount ?? 0}
+            </p>
+          )}
         </div>
       </div>
 

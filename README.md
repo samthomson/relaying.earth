@@ -28,6 +28,8 @@ The app uses a single light theme. Brand palette: white, orange, purple, grey, b
 
 ## TODO
 
+- [ ] react globe gl?
+- [ ] sort hte folowing
 - [ ] Wire up real weather station data sources
 - [ ] Add station detail page
 - [ ] Implement station favouriting / list management

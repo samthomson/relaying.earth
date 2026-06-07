@@ -1,19 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Globe, { type GlobeMethods } from 'react-globe.gl';
-import * as THREE from 'three';
 import { Link } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { brandColors } from '@/lib/brandColors';
-import { cn } from '@/lib/utils';
 import type { WeatherStationMetadata } from '@/lib/weatherUtils';
 
-// NASA Blue Marble — real satellite imagery, bundled with three-globe examples.
-const EARTH_TEXTURE_URL =
-  'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
-const EARTH_BUMP_URL =
-  'https://unpkg.com/three-globe/example/img/earth-topology.png';
+const EARTH_TEXTURE_URL = '/textures/earth-blue-marble.jpg';
+const EARTH_BUMP_URL = '/textures/earth-topology.png';
 
 interface WeatherGlobeProps {
   stations: WeatherStationMetadata[];
@@ -41,9 +36,7 @@ export function WeatherGlobe({
     station: WeatherStationMetadata;
     screen: { x: number; y: number };
   } | null>(null);
-  const [texturesReady, setTexturesReady] = useState(false);
 
-  // Container resize observer.
   useEffect(() => {
     if (!containerRef.current) return;
     const el = containerRef.current;
@@ -56,73 +49,12 @@ export function WeatherGlobe({
     return () => ro.disconnect();
   }, []);
 
-  // Brand-grey placeholder until textures arrive — avoids a black flash.
-  const globeMaterial = useMemo(() => {
-    const color = new THREE.Color().setHSL(220 / 360, 0.1, 0.78);
-    const emissive = new THREE.Color().setHSL(220 / 360, 0.1, 0.93);
-    return new THREE.MeshPhongMaterial({
-      color,
-      emissive,
-      emissiveIntensity: 0.2,
-      shininess: 6,
-    });
-  }, []);
-
-  useEffect(() => {
-    const loader = new THREE.TextureLoader();
-    loader.crossOrigin = 'anonymous';
-
-    let pending = 2;
-    const onTextureLoaded = () => {
-      pending -= 1;
-      if (pending === 0) setTexturesReady(true);
-    };
-
-    loader.load(
-      EARTH_TEXTURE_URL,
-      (dayTexture) => {
-        dayTexture.colorSpace = THREE.SRGBColorSpace;
-        globeMaterial.map = dayTexture;
-        globeMaterial.emissiveMap = dayTexture;
-        globeMaterial.emissive = new THREE.Color(0xffffff);
-        globeMaterial.emissiveIntensity = 0.5;
-        globeMaterial.needsUpdate = true;
-        onTextureLoaded();
-      },
-      undefined,
-      onTextureLoaded,
-    );
-
-    loader.load(
-      EARTH_BUMP_URL,
-      (bumpTexture) => {
-        globeMaterial.bumpMap = bumpTexture;
-        globeMaterial.bumpScale = 0.45;
-        globeMaterial.needsUpdate = true;
-        onTextureLoaded();
-      },
-      undefined,
-      onTextureLoaded,
-    );
-
-    return () => {
-      setTexturesReady(false);
-      (globeMaterial.map as THREE.Texture | null)?.dispose();
-      (globeMaterial.bumpMap as THREE.Texture | null)?.dispose();
-      (globeMaterial.emissiveMap as THREE.Texture | null)?.dispose();
-      globeMaterial.dispose();
-    };
-  }, [globeMaterial]);
-
-  // Configure orbit controls once the globe is ready.
   useEffect(() => {
     const globe = globeRef.current;
     if (!globe) return;
     const controls = globe.controls();
     controls.enableRotate = true;
     controls.enableZoom = true;
-    // Right-drag pan is meaningless on a globe (just moves the target off
-    // centre); disable it so users can't accidentally lose the planet.
     controls.enablePan = false;
     controls.enableDamping = true;
     controls.dampingFactor = 0.12;
@@ -132,13 +64,10 @@ export function WeatherGlobe({
     controls.autoRotateSpeed = 0.35;
     controls.minDistance = 120;
     controls.maxDistance = 700;
-    // On touch devices, disable drag-to-rotate so vertical swipes scroll the page.
     controls.enableRotate = !isMobile;
-    // Initial view: close enough that the planet dominates the viewport.
     globe.pointOfView({ lat: 20, lng: -30, altitude: 0.85 }, 0);
   }, [size.width, size.height, isMobile]);
 
-  // Pause auto-rotation while the user is interacting.
   useEffect(() => {
     const globe = globeRef.current;
     if (!globe) return;
@@ -164,7 +93,6 @@ export function WeatherGlobe({
     };
   }, [size.width, size.height]);
 
-  // Map stations -> globe-friendly points.
   const points = useMemo<StationPoint[]>(() => {
     return stations
       .filter(
@@ -174,8 +102,6 @@ export function WeatherGlobe({
       .map((s) => ({ lat: s.lat, lng: s.lng, station: s }));
   }, [stations]);
 
-  // Track the screen position of the hovered point so the tooltip can follow
-  // the marker even as the globe spins.
   useEffect(() => {
     if (!hovered) return;
     const globe = globeRef.current;
@@ -207,9 +133,9 @@ export function WeatherGlobe({
         height={size.height}
         animateIn={false}
         backgroundColor="rgba(0,0,0,0)"
-        globeMaterial={globeMaterial}
+        globeImageUrl={EARTH_TEXTURE_URL}
+        bumpImageUrl={EARTH_BUMP_URL}
         showAtmosphere={false}
-        // Stations as maroon dots sitting just above the surface
         pointsData={points}
         pointLat={(d) => (d as StationPoint).lat}
         pointLng={(d) => (d as StationPoint).lng}
@@ -242,7 +168,6 @@ export function WeatherGlobe({
           const p = point as unknown as StationPoint;
           onStationClick?.(p.station);
         }}
-        // Radar-style transmission rings expanding from each station
         ringsData={points}
         ringLat={(d) => (d as StationPoint).lat}
         ringLng={(d) => (d as StationPoint).lng}
@@ -257,19 +182,6 @@ export function WeatherGlobe({
         }}
       />
 
-      {/* Soft placeholder while textures stream in */}
-      <div
-        className={cn(
-          'pointer-events-none absolute inset-0 transition-opacity duration-700',
-          texturesReady ? 'opacity-0' : 'opacity-100',
-        )}
-        aria-hidden
-      >
-        <div className="absolute left-1/2 top-1/2 h-[min(72vw,520px)] w-[min(72vw,520px)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br from-muted via-muted-foreground/25 to-muted shadow-inner motion-safe:animate-pulse-slow" />
-      </div>
-
-      {/* Hover tooltip rendered as a normal React component so it picks up
-          all of the project's brand styling. */}
       {hovered && (
         <div
           className="pointer-events-none absolute z-30 -translate-x-1/2 -translate-y-[calc(100%+18px)] rounded-lg border border-border bg-background/95 px-4 py-3 text-sm text-foreground shadow-2xl shadow-black/40 backdrop-blur"
@@ -322,8 +234,6 @@ export function WeatherGlobe({
         </div>
       )}
 
-      {/* Hidden — keep the npub of the hovered point reachable to screen
-          readers in case the user is tabbing rather than mouse-hovering. */}
       {hovered && (
         <span className="sr-only">
           {nip19.npubEncode(hovered.station.pubkey)}
