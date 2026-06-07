@@ -4,11 +4,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import type { WeatherStationMetadata } from '@/lib/weatherUtils';
 import { useLatestReading } from '@/hooks/useStationReadings';
+import { ReadingAgeBadge } from '@/components/ReadingAgeBadge';
 import { LatestReadingList, SensorSummary } from '@/components/LatestReadingList';
 import { SensorInterpretationGuide } from '@/components/SensorInterpretationGuide';
 import { nip19 } from 'nostr-tools';
 import { Link } from 'react-router-dom';
-import { formatRelativeTime } from '@/lib/timeUtils';
 
 interface StationDetailPanelProps {
   station: WeatherStationMetadata;
@@ -52,28 +52,38 @@ export function StationDetailPanel({ station, onClose }: StationDetailPanelProps
       </div>
 
       <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
-        <Section
-          icon={<Activity className="h-3.5 w-3.5" />}
-          label="Latest reading"
-          action={<SensorInterpretationGuide />}
-        >
-          {isLoading ? (
+        {isLoading ? (
+          <Section
+            icon={<Activity className="h-3.5 w-3.5" />}
+            label="Latest reading"
+            action={<SensorInterpretationGuide />}
+          >
             <div className="space-y-2">
               <Skeleton className="h-4 w-2/3" />
               <Skeleton className="h-4 w-1/2" />
               <Skeleton className="h-4 w-3/4" />
             </div>
-          ) : latestReading ? (
-            <>
-              <p className="mb-3 text-[11px] font-mono uppercase tracking-widest text-muted-foreground">
-                {formatRelativeTime(latestReading.timestamp)}
-              </p>
-              <LatestReadingList readings={latestReading.readings} />
-            </>
-          ) : (
+          </Section>
+        ) : latestReading ? (
+          <Section
+            icon={<Activity className="h-3.5 w-3.5" />}
+            label="Latest reading"
+            meta={
+              <ReadingAgeBadge timestamp={latestReading.timestamp} />
+            }
+            action={<SensorInterpretationGuide />}
+          >
+            <LatestReadingList readings={latestReading.readings} />
+          </Section>
+        ) : (
+          <Section
+            icon={<Activity className="h-3.5 w-3.5" />}
+            label="Latest reading"
+            action={<SensorInterpretationGuide />}
+          >
             <p className="text-xs text-muted-foreground">No readings published yet.</p>
-          )}
-        </Section>
+          </Section>
+        )}
 
         <Section icon={<Radio className="h-3.5 w-3.5" />} label="Sensors">
           <SensorSummary sensorCount={station.sensors.length} okCount={okSensors} />
@@ -122,20 +132,23 @@ export function StationDetailPanel({ station, onClose }: StationDetailPanelProps
 function Section({
   icon,
   label,
+  meta,
   action,
   children,
 }: {
   icon: React.ReactNode;
   label: string;
+  meta?: React.ReactNode;
   action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.24em] text-muted-foreground">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 text-[10px] font-mono uppercase tracking-[0.24em] text-muted-foreground">
           {icon}
           {label}
+          {meta}
         </div>
         {action}
       </div>

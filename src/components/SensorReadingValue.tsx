@@ -44,9 +44,11 @@ export function SensorReadingValue({
       <div className="text-sm font-semibold tabular-nums leading-none text-foreground">
         {formattedValue}
       </div>
-      {interpretation && (
-        <SensorInterpretationBadge interpretation={interpretation} />
-      )}
+      <div className="min-h-[14px]">
+        {interpretation && (
+          <SensorInterpretationBadge interpretation={interpretation} />
+        )}
+      </div>
     </div>
   );
 }

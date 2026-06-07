@@ -176,6 +176,27 @@ function interpretRain(value: number): SensorInterpretation {
 
 const INTERPRETABLE_SENSORS = new Set(['light', 'rain', 'pm1', 'pm25', 'pm10']);
 
+export const RAIN_CHART_LABELS = ['Dry', 'Damp', 'Wet', 'Raining', 'Heavy'] as const;
+
+/** Map raw MH-RD reading (0–4095, higher = drier) to chart level 0–4 (dry → heavy). */
+export function rainRawToLevel(raw: number): number {
+  const tier =
+    RAIN_TIERS.find((entry) => raw >= entry.minInclusive) ?? RAIN_TIERS.at(-1)!;
+  const order: Record<RainLevel, number> = {
+    dry: 0,
+    damp: 1,
+    wet: 2,
+    raining: 3,
+    heavy: 4,
+  };
+  return order[tier.level];
+}
+
+export function formatRainChartTick(level: number): string {
+  const idx = Math.max(0, Math.min(RAIN_CHART_LABELS.length - 1, Math.round(level)));
+  return RAIN_CHART_LABELS[idx];
+}
+
 export function hasSensorInterpretation(type: string): boolean {
   return INTERPRETABLE_SENSORS.has(type);
 }

@@ -31,3 +31,17 @@ export function formatAbsoluteTime(unixSeconds: number): string {
     timeStyle: 'short',
   });
 }
+
+/** e.g. "in 2h 15m" — returns null if the target is in the past. */
+export function formatCountdownTo(now: Date, target: Date): string | null {
+  const diffMs = target.getTime() - now.getTime();
+  if (diffMs <= 0) return null;
+
+  const totalMinutes = Math.floor(diffMs / 60_000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) return `in ${minutes}m`;
+  if (minutes === 0) return `in ${hours}h`;
+  return `in ${hours}h ${minutes}m`;
+}

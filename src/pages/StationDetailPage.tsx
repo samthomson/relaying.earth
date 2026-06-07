@@ -5,41 +5,34 @@ import { nip19 } from 'nostr-tools';
 import {
   ArrowLeft,
   MapPin,
-  Activity,
   Cpu,
   Radio,
   Calendar,
   Zap,
   Wifi,
+  Clock,
 } from 'lucide-react';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
 
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { RainForecastPanel } from '@/components/RainForecastPanel';
+import { StationHistoryChart } from '@/components/StationHistoryChart';
 
 import { useWeatherStation } from '@/hooks/useWeatherStations';
 import { useStationReadings } from '@/hooks/useStationReadings';
+import { useStationChartReadings } from '@/hooks/useStationChartReadings';
 import { useWeatherFormatters } from '@/hooks/useWeatherFormatters';
-import { LatestReadingList, SensorSummary } from '@/components/LatestReadingList';
+import { LatestReadingList } from '@/components/LatestReadingList';
 import { ReadingsTable } from '@/components/ReadingsTable';
 import { IdentityRows } from '@/components/IdentityRows';
+import { StationSensorList } from '@/components/StationSensorList';
+import { StationLocalTimePanel } from '@/components/StationLocalTimePanel';
 import { SensorInterpretationGuide } from '@/components/SensorInterpretationGuide';
-import { getSensorName } from '@/lib/weatherUtils';
 import {
   CHART_TIME_RANGE_CONFIG,
-  downsampleChartPoints,
-  formatChartAxisTick,
   type ChartTimeRange,
 } from '@/lib/chartUtils';
 import {
@@ -51,7 +44,6 @@ const StationDetailPage = () => {
   const { nip19: nip19Param } = useParams<{ nip19: string }>();
   const { formatSensorValue, getSensorUnit, toDisplayNumber } = useWeatherFormatters();
   const [timeRange, setTimeRange] = useState<ChartTimeRange>('24h');
-  const [activeSensor, setActiveSensor] = useState<string | null>(null);
   const [chartWindow, setChartWindow] = useState(() => {
     const now = Math.floor(Date.now() / 1000);
     return {
@@ -92,8 +84,12 @@ const StationDetailPage = () => {
   const { data: station, isLoading: stationLoading } = useWeatherStation(pubkey);
   const { data: readings, isLoading: readingsLoading } = useStationReadings({
     pubkey,
-    since,
-    limit: CHART_TIME_RANGE_CONFIG[timeRange].readingLimit,
+    limit: 40,
+  });
+  const { data: chartReadings, isLoading: chartReadingsLoading } = useStationChartReadings({
+    pubkey,
+    timeRange,
+    until: chartUntil,
   });
 
   useSeoMeta({
@@ -106,27 +102,12 @@ const StationDetailPage = () => {
   });
 
   const sensorTypes = useMemo(() => {
-    if (!readings) return [];
+    const source = chartReadings ?? readings;
+    if (!source) return [];
     const set = new Set<string>();
-    readings.forEach((reading) => reading.readings.forEach((r) => set.add(r.type)));
+    source.forEach((reading) => reading.readings.forEach((r) => set.add(r.type)));
     return Array.from(set);
-  }, [readings]);
-
-  // Default-select first sensor type when one becomes available
-  const selectedSensor = activeSensor && sensorTypes.includes(activeSensor)
-    ? activeSensor
-    : sensorTypes[0] ?? null;
-
-  const chartData = useMemo(() => {
-    if (!readings || !selectedSensor) return [];
-    return downsampleChartPoints(
-      readings,
-      selectedSensor,
-      since,
-      CHART_TIME_RANGE_CONFIG[timeRange].bucketSeconds,
-      toDisplayNumber,
-    );
-  }, [readings, selectedSensor, since, timeRange, toDisplayNumber]);
+  }, [chartReadings, readings]);
 
   const latestReading = readings?.[0];
 
@@ -320,8 +301,34 @@ const StationDetailPage = () => {
               )}
             </Panel>
 
-            <Panel icon={<Cpu className="h-3.5 w-3.5" />} title="Sensors">
-              <SensorSummary sensorCount={station.sensors.length} okCount={okSensors} />
+            <Panel icon={<Cpu className="h-3.5 w-3.5" />} title={`Sensors (${station.sensors.length})`}>
+              <StationSensorList station={station} />
+            </Panel>
+
+            <Panel icon={<Clock className="h-3.5 w-3.5" />} title="Location & time">
+              <div className="mb-3 space-y-1.5 text-sm">
+                {station.geohash && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground">Geohash</span>
+                    <span className="font-mono text-xs">{station.geohash}</span>
+                  </div>
+                )}
+                {station.lat !== undefined && station.lng !== undefined && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground">Coords</span>
+                    <span className="font-mono text-xs">
+                      {station.lat.toFixed(4)}, {station.lng.toFixed(4)}
+                    </span>
+                  </div>
+                )}
+                {station.elevation !== undefined && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground">Elevation</span>
+                    <span>{station.elevation} m</span>
+                  </div>
+                )}
+              </div>
+              <StationLocalTimePanel station={station} />
             </Panel>
 
             <Panel icon={<MapPin className="h-3.5 w-3.5" />} title="Identity">
@@ -331,141 +338,25 @@ const StationDetailPage = () => {
 
           {/* Charts column */}
           <div className="space-y-4">
-            <Card className="bg-card/60">
-              <CardContent className="p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.24em] text-muted-foreground">
-                    <Activity className="h-3.5 w-3.5 text-primary" />
-                    History
-                  </div>
-                  <div className="flex gap-1 rounded-md border border-border bg-muted/40 p-0.5">
-                    {(Object.keys(CHART_TIME_RANGE_CONFIG) as ChartTimeRange[]).map((k) => (
-                      <button
-                        key={k}
-                        type="button"
-                        onClick={() => setTimeRange(k)}
-                        className={`rounded px-2 py-1 text-xs transition-colors ${
-                          timeRange === k
-                            ? 'bg-primary text-primary-foreground'
-                            : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        {k.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+            <RainForecastPanel
+              readings={readings}
+              readingsLoading={readingsLoading}
+              hasPressureSensor={station.sensors.some((sensor) => sensor.type === 'pressure')}
+              lat={station.lat}
+            />
 
-                {sensorTypes.length > 0 && (
-                  <div className="mt-4 flex flex-wrap gap-1.5">
-                    {sensorTypes.map((type) => {
-                      const isActive = selectedSensor === type;
-                      return (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => setActiveSensor(type)}
-                          className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-                            isActive
-                              ? 'border-primary bg-primary/15 text-primary'
-                              : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
-                          }`}
-                        >
-                          {getSensorName(type)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <div className="mt-6">
-                  {readingsLoading ? (
-                    <Skeleton className="h-80 w-full" />
-                  ) : !selectedSensor ? (
-                    <div className="flex h-80 items-center justify-center text-sm text-muted-foreground">
-                      No readings in the selected window.
-                    </div>
-                  ) : chartData.length === 0 ? (
-                    <div className="flex h-80 items-center justify-center text-sm text-muted-foreground">
-                      No {getSensorName(selectedSensor)} data in this window.
-                    </div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height={340}>
-                      <LineChart
-                        data={chartData}
-                        margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
-                      >
-                        <defs>
-                          <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
-                            <stop offset="0%" stopColor="var(--brand-orange)" />
-                            <stop offset="100%" stopColor="var(--brand-purple)" />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid
-                          strokeDasharray="3 6"
-                          stroke="var(--border)"
-                          opacity={0.6}
-                          vertical={false}
-                        />
-                        <XAxis
-                          type="number"
-                          dataKey="timestamp"
-                          domain={[since, chartUntil]}
-                          scale="time"
-                          tickFormatter={(ts) =>
-                            formatChartAxisTick(Number(ts), timeRange)
-                          }
-                          tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
-                          axisLine={{ stroke: 'var(--border)' }}
-                          tickLine={false}
-                          minTickGap={48}
-                        />
-                        <YAxis
-                          tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
-                          axisLine={{ stroke: 'var(--border)' }}
-                          tickLine={false}
-                          width={56}
-                          label={{
-                            value: getSensorUnit(selectedSensor),
-                            angle: -90,
-                            position: 'insideLeft',
-                            style: { fill: 'var(--muted-foreground)', fontSize: 11 },
-                          }}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'var(--card)',
-                            border: '1px solid var(--border)',
-                            borderRadius: 8,
-                            fontSize: 12,
-                          }}
-                          labelStyle={{ color: 'var(--foreground)' }}
-                          itemStyle={{ color: 'var(--primary)' }}
-                          labelFormatter={(label) =>
-                            formatAbsoluteTime(Number(label))
-                          }
-                          formatter={(value) => [
-                            formatSensorValue(
-                              selectedSensor,
-                              typeof value === 'number' ? value.toString() : String(value),
-                            ),
-                            getSensorName(selectedSensor),
-                          ]}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="value"
-                          stroke="url(#lineGradient)"
-                          strokeWidth={2}
-                          dot={false}
-                          activeDot={{ r: 4, fill: 'var(--brand-orange)' }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <StationHistoryChart
+              readings={chartReadings}
+              readingsLoading={chartReadingsLoading}
+              timeRange={timeRange}
+              since={since}
+              until={chartUntil}
+              sensorTypes={sensorTypes}
+              formatSensorValue={formatSensorValue}
+              getSensorUnit={getSensorUnit}
+              toDisplayNumber={toDisplayNumber}
+              onTimeRangeChange={setTimeRange}
+            />
 
             {/* Recent events table */}
             <Card className="bg-card/60">
@@ -490,7 +381,10 @@ const StationDetailPage = () => {
                 ) : (
                   <ReadingsTable
                     layout="events"
-                    rows={readings.slice(0, 12).map((reading) => ({
+                    rows={readings
+                      .filter((reading) => reading.timestamp >= since)
+                      .slice(0, 12)
+                      .map((reading) => ({
                       id: reading.event.id,
                       timestamp: reading.timestamp,
                       readings: reading.readings,

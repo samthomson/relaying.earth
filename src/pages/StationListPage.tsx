@@ -20,10 +20,10 @@ import {
 
 import { useWeatherStations } from '@/hooks/useWeatherStations';
 import { useLatestReadingsForStations } from '@/hooks/useLatestReadingsForStations';
-import { ReadingsTable } from '@/components/ReadingsTable';
+import { ReadingAgeBadge } from '@/components/ReadingAgeBadge';
+import { StationCardReadings } from '@/components/StationCardReadings';
 import { getSensorName } from '@/lib/weatherUtils';
 import type { WeatherStationMetadata, WeatherReading } from '@/lib/weatherUtils';
-import { formatRelativeTime } from '@/lib/timeUtils';
 
 type SortKey = 'sensors' | 'name' | 'recent';
 
@@ -274,59 +274,48 @@ function StationListCard({
       ),
   ).length;
 
-  const readingLabel = readingsLoading
-    ? '…'
-    : latestReading
-      ? formatRelativeTime(latestReading.timestamp)
-      : 'No readings';
-
   return (
-    <Link to={`/${npub}`} className="group">
+    <Link to={`/${npub}`} className="group block h-full">
       <Card className="relative h-full overflow-hidden border-border/70 bg-card/60 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5">
-        <CardContent className="flex h-full flex-col gap-3 p-5">
-          <div className="flex items-start justify-between gap-3">
-            <h3 className="line-clamp-2 font-display text-lg font-semibold leading-tight">
+        <CardContent className="flex h-full flex-col gap-3 p-4">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="line-clamp-2 font-display text-lg font-semibold leading-tight group-hover:text-primary">
               {station.name || 'Unnamed station'}
             </h3>
-            <span className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              {readingLabel}
-            </span>
+            <ReadingAgeBadge
+              timestamp={latestReading?.timestamp}
+              loading={readingsLoading}
+            />
           </div>
 
           {station.description && (
-            <p className="line-clamp-2 text-sm text-muted-foreground">
+            <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
               {station.description}
             </p>
           )}
 
-          <div className="mt-auto space-y-3">
-            {readingsLoading ? (
-              <Skeleton className="h-16 w-full rounded-md" />
-            ) : latestReading ? (
-              <ReadingsTable
-                rows={[
-                  {
-                    id: station.pubkey,
-                    readings: latestReading.readings,
-                  },
-                ]}
-              />
-            ) : (
-              <p className="text-xs text-muted-foreground">No readings yet.</p>
-            )}
-
-            <div className="flex items-center justify-between gap-3 border-t border-border/70 pt-3 text-[11px] font-mono uppercase tracking-widest text-muted-foreground">
-              <div className="flex min-w-0 items-center gap-1.5">
-                <MapPin className="h-3 w-3 shrink-0" />
-                <span className="truncate">
-                  {station.geohash || '—'}
-                </span>
-              </div>
-              <span className="shrink-0">
-                {okSensors}/{station.sensors.length} sensors
-              </span>
-            </div>
+          <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <span className="inline-flex min-w-0 items-center gap-1">
+              <MapPin className="h-3 w-3 shrink-0" />
+              <span className="truncate">{station.geohash || '—'}</span>
+            </span>
+            <span aria-hidden className="text-border">
+              ·
+            </span>
+            <span className="shrink-0">
+              {okSensors}/{station.sensors.length} sensors
+            </span>
           </div>
+
+          {readingsLoading ? (
+            <Skeleton className="h-28 w-full rounded-lg" />
+          ) : latestReading ? (
+            <StationCardReadings readings={latestReading.readings} />
+          ) : (
+            <p className="rounded-lg border border-dashed border-border/60 px-3 py-4 text-center text-xs text-muted-foreground">
+              No readings yet
+            </p>
+          )}
         </CardContent>
       </Card>
     </Link>
