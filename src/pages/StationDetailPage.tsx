@@ -301,10 +301,6 @@ const StationDetailPage = () => {
               )}
             </Panel>
 
-            <Panel icon={<Cpu className="h-3.5 w-3.5" />} title={`Sensors (${station.sensors.length})`}>
-              <StationSensorList station={station} />
-            </Panel>
-
             <Panel icon={<Clock className="h-3.5 w-3.5" />} title="Location & time">
               <div className="mb-3 space-y-1.5 text-sm">
                 {station.geohash && (
@@ -329,6 +325,10 @@ const StationDetailPage = () => {
                 )}
               </div>
               <StationLocalTimePanel station={station} />
+            </Panel>
+
+            <Panel icon={<Cpu className="h-3.5 w-3.5" />} title={`Sensors (${station.sensors.length})`}>
+              <StationSensorList station={station} />
             </Panel>
 
             <Panel icon={<MapPin className="h-3.5 w-3.5" />} title="Identity">

@@ -50,7 +50,17 @@ export function StationLocalTimePanel({ station }: StationLocalTimePanelProps) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
+      <SunDayArc
+        now={now}
+        solar={solar}
+        timeZone={timeInfo.timeZone}
+        sunriseCountdown={timeInfo.sunriseCountdown}
+        sunsetCountdown={timeInfo.sunsetCountdown}
+        showViewerTime={showViewerTime}
+        viewerTimeZone={viewerTimeZone}
+      />
+
+      <div className="flex items-center justify-between gap-2 border-t border-border/40 pt-3">
         <Badge
           variant="outline"
           className={
@@ -75,36 +85,26 @@ export function StationLocalTimePanel({ station }: StationLocalTimePanelProps) {
         </button>
       </div>
 
-      <div className="flex items-baseline justify-between gap-3 text-sm">
-        <span className="text-muted-foreground">Station time</span>
-        <div className="text-right">
-          <div className="font-medium tabular-nums">{timeInfo.stationClock}</div>
-          <div className="mt-0.5 text-[11px] text-muted-foreground">{timeInfo.timeZoneLabel}</div>
-        </div>
-      </div>
-
-      {showViewerTime && (
+      <div className="space-y-2">
         <div className="flex items-baseline justify-between gap-3 text-sm">
-          <span className="text-muted-foreground">Your time</span>
+          <span className="text-muted-foreground">Station time</span>
           <div className="text-right">
-            <div className="font-medium tabular-nums">{timeInfo.viewerClock}</div>
-            <div className="mt-0.5 text-[11px] text-muted-foreground">
-              {timeInfo.viewerTimezone}
-            </div>
+            <div className="font-medium tabular-nums">{timeInfo.stationClock}</div>
+            <div className="mt-0.5 text-[11px] text-muted-foreground">{timeInfo.timeZoneLabel}</div>
           </div>
         </div>
-      )}
 
-      <div className="border-t border-border/40 pt-3">
-        <SunDayArc
-          now={now}
-          solar={solar}
-          timeZone={timeInfo.timeZone}
-          sunriseCountdown={timeInfo.sunriseCountdown}
-          sunsetCountdown={timeInfo.sunsetCountdown}
-          showViewerTime={showViewerTime}
-          viewerTimeZone={viewerTimeZone}
-        />
+        {showViewerTime && (
+          <div className="flex items-baseline justify-between gap-3 text-sm">
+            <span className="text-muted-foreground">Your time</span>
+            <div className="text-right">
+              <div className="font-medium tabular-nums">{timeInfo.viewerClock}</div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                {timeInfo.viewerTimezone}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

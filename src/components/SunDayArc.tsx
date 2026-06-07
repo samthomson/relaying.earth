@@ -132,15 +132,14 @@ export function SunDayArc({
         </div>
 
         <div>
-          <div className="font-mono uppercase tracking-wide text-muted-foreground">Now</div>
-          <div className="mt-0.5 font-medium tabular-nums text-primary">
-            {formatTimeInZone(now, timeZone)}
-          </div>
-          {nextCountdown && (
+          <div className="font-mono uppercase tracking-wide text-muted-foreground">Next</div>
+          {nextCountdown ? (
             <div className="mt-0.5 font-mono text-[10px] uppercase tracking-wide text-primary">
               {nextCountdown.isTomorrow ? 'Tomorrow · ' : ''}
               {nextCountdown.countdown}
             </div>
+          ) : (
+            <div className="mt-0.5 text-muted-foreground">—</div>
           )}
         </div>
 
