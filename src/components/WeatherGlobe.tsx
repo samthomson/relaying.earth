@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Globe, { type GlobeMethods } from 'react-globe.gl';
+import * as THREE from 'three';
 import { Link } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 
@@ -8,7 +9,6 @@ import { brandColors } from '@/lib/brandColors';
 import type { WeatherStationMetadata } from '@/lib/weatherUtils';
 
 const EARTH_TEXTURE_URL = '/textures/earth-blue-marble.jpg';
-const EARTH_BUMP_URL = '/textures/earth-topology.png';
 
 interface WeatherGlobeProps {
   stations: WeatherStationMetadata[];
@@ -21,6 +21,43 @@ interface StationPoint {
   lat: number;
   lng: number;
   station: WeatherStationMetadata;
+}
+
+function findGlobeMaterial(globe: GlobeMethods): THREE.MeshPhongMaterial | undefined {
+  let found: THREE.MeshPhongMaterial | undefined;
+  globe.scene().traverse((obj) => {
+    if (found) return;
+    if (
+      obj instanceof THREE.Mesh &&
+      obj.material instanceof THREE.MeshPhongMaterial &&
+      obj.material.map
+    ) {
+      found = obj.material;
+    }
+  });
+  return found;
+}
+
+function brightenGlobeMaterial(globe: GlobeMethods): boolean {
+  const material = findGlobeMaterial(globe);
+  if (!material?.map) return false;
+  material.emissiveMap = material.map;
+  material.emissive = new THREE.Color(0xffffff);
+  material.emissiveIntensity = 0.55;
+  material.shininess = 6;
+  material.needsUpdate = true;
+  return true;
+}
+
+/** Texture loads async — retry until the map is available. */
+function scheduleGlobeBrighten(globe: GlobeMethods) {
+  let attempts = 0;
+  const tryBrighten = () => {
+    if (brightenGlobeMaterial(globe) || attempts >= 40) return;
+    attempts += 1;
+    window.setTimeout(tryBrighten, 100);
+  };
+  tryBrighten();
 }
 
 export function WeatherGlobe({
@@ -134,23 +171,26 @@ export function WeatherGlobe({
         animateIn={false}
         backgroundColor="rgba(0,0,0,0)"
         globeImageUrl={EARTH_TEXTURE_URL}
-        bumpImageUrl={EARTH_BUMP_URL}
         showAtmosphere={false}
+        onGlobeReady={() => {
+          const globe = globeRef.current;
+          if (globe) scheduleGlobeBrighten(globe);
+        }}
         pointsData={points}
         pointLat={(d) => (d as StationPoint).lat}
         pointLng={(d) => (d as StationPoint).lng}
-        pointAltitude={0.01}
+        pointAltitude={0.02}
         pointRadius={(d) => {
           const p = d as StationPoint;
-          return p.station.pubkey === highlightedPubkey ? 0.55 : 0.32;
+          return p.station.pubkey === highlightedPubkey ? 0.65 : 0.4;
         }}
         pointColor={(d) => {
           const p = d as StationPoint;
           return p.station.pubkey === highlightedPubkey
-            ? brandColors.orange
-            : brandColors.maroon;
+            ? brandColors.orangeHex
+            : brandColors.maroonHex;
         }}
-        pointResolution={18}
+        pointResolution={20}
         pointsMerge={false}
         onPointHover={(point, _prev) => {
           if (point) {
@@ -171,7 +211,7 @@ export function WeatherGlobe({
         ringsData={points}
         ringLat={(d) => (d as StationPoint).lat}
         ringLng={(d) => (d as StationPoint).lng}
-        ringAltitude={0.006}
+        ringAltitude={0.008}
         ringMaxRadius={3.2}
         ringPropagationSpeed={1.4}
         ringRepeatPeriod={2400}

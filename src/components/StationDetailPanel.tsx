@@ -47,27 +47,36 @@ export function StationDetailPanel({ station, onClose }: StationDetailPanelProps
       </div>
 
       <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
-        <Section icon={<MapPin className="h-3.5 w-3.5" />} label="Location">
-          <Row label="Geohash" value={station.geohash || '—'} mono />
-          {station.lat !== undefined && station.lng !== undefined && (
-            <Row
-              label="Coords"
-              value={`${station.lat.toFixed(4)}, ${station.lng.toFixed(4)}`}
-              mono
-            />
-          )}
-          {station.elevation !== undefined && (
-            <Row label="Elevation" value={`${station.elevation} m`} />
-          )}
-        </Section>
-
-        <Section icon={<Cpu className="h-3.5 w-3.5" />} label="Hardware">
-          {station.power && <Row label="Power" value={station.power} pill />}
-          {station.connectivity && (
-            <Row label="Connectivity" value={station.connectivity} pill />
-          )}
-          {!station.power && !station.connectivity && (
-            <p className="text-xs text-muted-foreground">Not declared</p>
+        <Section icon={<Activity className="h-3.5 w-3.5" />} label="Latest reading">
+          {isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-3/4" />
+            </div>
+          ) : latestReading ? (
+            <>
+              <p className="mb-3 text-[11px] font-mono uppercase tracking-widest text-muted-foreground">
+                {formatRelativeTime(latestReading.timestamp)}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {latestReading.readings.map((reading, idx) => (
+                  <div
+                    key={`${reading.type}-${idx}`}
+                    className="rounded-md border border-border/60 bg-muted/40 px-3 py-2"
+                  >
+                    <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                      {getSensorName(reading.type)}
+                    </div>
+                    <div className="mt-0.5 font-display text-base font-semibold">
+                      {formatSensorValue(reading.type, reading.value)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">No readings published yet.</p>
           )}
         </Section>
 
@@ -109,36 +118,27 @@ export function StationDetailPanel({ station, onClose }: StationDetailPanelProps
           )}
         </Section>
 
-        <Section icon={<Activity className="h-3.5 w-3.5" />} label="Latest reading">
-          {isLoading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-2/3" />
-              <Skeleton className="h-4 w-1/2" />
-              <Skeleton className="h-4 w-3/4" />
-            </div>
-          ) : latestReading ? (
-            <>
-              <p className="mb-3 text-[11px] font-mono uppercase tracking-widest text-muted-foreground">
-                {formatRelativeTime(latestReading.timestamp)}
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {latestReading.readings.map((reading, idx) => (
-                  <div
-                    key={`${reading.type}-${idx}`}
-                    className="rounded-md border border-border/60 bg-muted/40 px-3 py-2"
-                  >
-                    <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-                      {getSensorName(reading.type)}
-                    </div>
-                    <div className="mt-0.5 font-display text-base font-semibold">
-                      {formatSensorValue(reading.type, reading.value)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <p className="text-xs text-muted-foreground">No readings published yet.</p>
+        <Section icon={<MapPin className="h-3.5 w-3.5" />} label="Location">
+          <Row label="Geohash" value={station.geohash || '—'} mono />
+          {station.lat !== undefined && station.lng !== undefined && (
+            <Row
+              label="Coords"
+              value={`${station.lat.toFixed(4)}, ${station.lng.toFixed(4)}`}
+              mono
+            />
+          )}
+          {station.elevation !== undefined && (
+            <Row label="Elevation" value={`${station.elevation} m`} />
+          )}
+        </Section>
+
+        <Section icon={<Cpu className="h-3.5 w-3.5" />} label="Hardware">
+          {station.power && <Row label="Power" value={station.power} pill />}
+          {station.connectivity && (
+            <Row label="Connectivity" value={station.connectivity} pill />
+          )}
+          {!station.power && !station.connectivity && (
+            <p className="text-xs text-muted-foreground">Not declared</p>
           )}
         </Section>
       </div>
