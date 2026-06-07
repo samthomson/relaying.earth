@@ -31,11 +31,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 import { useWeatherStation } from '@/hooks/useWeatherStations';
 import { useStationReadings } from '@/hooks/useStationReadings';
-import {
-  getSensorName,
-  formatSensorValue,
-  getSensorUnit,
-} from '@/lib/weatherUtils';
+import { useWeatherFormatters } from '@/hooks/useWeatherFormatters';
+import { getSensorName } from '@/lib/weatherUtils';
 import {
   formatRelativeTime,
   formatAbsoluteTime,
@@ -51,6 +48,7 @@ const TIME_RANGE_CONFIG: Record<TimeRange, { seconds: number; readingLimit: numb
 
 const StationDetailPage = () => {
   const { nip19: nip19Param } = useParams<{ nip19: string }>();
+  const { formatSensorValue, getSensorUnit, toDisplayNumber } = useWeatherFormatters();
   const [timeRange, setTimeRange] = useState<TimeRange>('24h');
   const [activeSensor, setActiveSensor] = useState<string | null>(null);
 
@@ -119,8 +117,8 @@ const StationDetailPage = () => {
       .map((reading) => {
         const point = reading.readings.find((r) => r.type === selectedSensor);
         if (!point) return null;
-        const value = parseFloat(point.value);
-        if (isNaN(value)) return null;
+        const value = toDisplayNumber(selectedSensor, point.value);
+        if (value === null || Number.isNaN(value)) return null;
         return {
           timestamp: reading.timestamp,
           value,
@@ -134,7 +132,7 @@ const StationDetailPage = () => {
       })
       .filter((p): p is { timestamp: number; value: number; label: string } => p !== null)
       .sort((a, b) => a.timestamp - b.timestamp);
-  }, [readings, selectedSensor, timeRange]);
+  }, [readings, selectedSensor, timeRange, toDisplayNumber]);
 
   const latestReading = readings?.[0];
 

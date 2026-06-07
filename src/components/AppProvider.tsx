@@ -33,6 +33,7 @@ const AppConfigSchema = z.object({
   relayMetadata: RelayMetadataSchema,
   blossomServerMetadata: BlossomServerMetadataSchema,
   useAppBlossomServers: z.boolean(),
+  units: z.enum(['metric', 'imperial']),
 }) satisfies z.ZodType<AppConfig>;
 
 export function AppProvider(props: AppProviderProps) {

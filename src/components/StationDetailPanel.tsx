@@ -4,10 +4,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import type { WeatherStationMetadata } from '@/lib/weatherUtils';
 import { useLatestReading } from '@/hooks/useStationReadings';
-import {
-  formatSensorValue,
-  getSensorName,
-} from '@/lib/weatherUtils';
+import { useWeatherFormatters } from '@/hooks/useWeatherFormatters';
+import { getSensorName } from '@/lib/weatherUtils';
 import { nip19 } from 'nostr-tools';
 import { Link } from 'react-router-dom';
 import { formatRelativeTime } from '@/lib/timeUtils';
@@ -18,6 +16,7 @@ interface StationDetailPanelProps {
 }
 
 export function StationDetailPanel({ station, onClose }: StationDetailPanelProps) {
+  const { formatSensorValue } = useWeatherFormatters();
   const { data: latestReading, isLoading } = useLatestReading(station.pubkey);
   const npub = nip19.npubEncode(station.pubkey);
 

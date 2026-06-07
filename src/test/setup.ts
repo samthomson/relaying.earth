@@ -1,6 +1,10 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
+vi.mock('@/components/PlausibleProvider', () => ({
+  PlausibleProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

@@ -1,4 +1,5 @@
 import { createContext } from "react";
+import type { UnitSystem } from "@/lib/units";
 
 export type Theme = "light";
 
@@ -30,6 +31,8 @@ export interface AppConfig {
    * are used.
    */
   useAppBlossomServers: boolean;
+  /** How weather sensor values are displayed (stored readings stay metric). */
+  units: UnitSystem;
 }
 
 export interface AppContextType {

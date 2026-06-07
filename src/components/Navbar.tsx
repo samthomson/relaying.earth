@@ -5,15 +5,8 @@ import { LoginArea } from '@/components/auth/LoginArea';
 import { cn } from '@/lib/utils';
 import { BrandMark } from '@/components/BrandMark';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { RelaySettings } from '@/components/RelaySettings';
+import { AppSettingsDialog } from '@/components/AppSettingsDialog';
+import { UnitSelector } from '@/components/UnitSelector';
 
 interface NavbarProps {
   /**
@@ -85,30 +78,23 @@ export function Navbar({ floating = false, dark = false }: NavbarProps) {
               </NavLink>
             );
           })}
-          <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-            <DialogTrigger asChild>
+          <UnitSelector className="hidden sm:flex" />
+          <AppSettingsDialog
+            open={settingsOpen}
+            onOpenChange={setSettingsOpen}
+            trigger={
               <Button
                 variant="ghost"
                 size="icon"
                 className={cn(
                   dark ? 'text-zinc-400 hover:text-white hover:bg-white/10' : 'text-muted-foreground hover:text-foreground',
                 )}
-                aria-label="Relay settings"
+                aria-label="Settings"
               >
                 <SettingsIcon className="h-4 w-4" />
               </Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Relay settings</DialogTitle>
-                <DialogDescription>
-                  Choose which Nostr relays this client reads from and writes to.
-                  Toggle defaults on or off, or add your own.
-                </DialogDescription>
-              </DialogHeader>
-              <RelaySettings />
-            </DialogContent>
-          </Dialog>
+            }
+          />
 
           <div className="ml-1 sm:ml-3">
             <LoginArea className="max-w-52" />
