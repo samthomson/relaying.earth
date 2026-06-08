@@ -33,7 +33,7 @@ The app uses a single light theme. Brand palette: white, orange, purple, grey, b
 - [ ] Wire up real weather station data sources
 - [ ] Add station detail page
 - [ ] Implement station favouriting / list management
-- [ ] Add map view for station locations
+- [ ] Add map view for station locations on the station page
 
 - [ ] src/components/Navbar.tsx still has light/dark stuff
 - [ ] src/components/WeatherGlobe.tsx has a bunch of extenral assets eg unpkg and looks messy in general. make a more succinct map implementation
