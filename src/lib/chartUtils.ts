@@ -144,12 +144,24 @@ export function buildMultiSeriesChartData(
   return [...merged.values()].sort((a, b) => a.timestamp - b.timestamp);
 }
 
-export function formatChartAxisTick(timestamp: number, range: ChartTimeRange): string {
+export function formatChartAxisTick(
+  timestamp: number,
+  range: ChartTimeRange,
+  timeZone?: string,
+): string {
   const date = new Date(timestamp * 1000);
   if (range === '7d') {
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      timeZone,
+    });
   }
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleTimeString(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone,
+  });
 }
 
 export function usesRainStateAxis(sensorType: string): boolean {

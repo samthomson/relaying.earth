@@ -9,6 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  type TooltipContentProps,
 } from 'recharts';
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,7 +17,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { ChartSampledReading } from '@/hooks/useStationChartReadings';
 import type { WeatherReading } from '@/lib/weatherUtils';
 import { getSensorName } from '@/lib/weatherUtils';
-import { formatRainChartTick } from '@/lib/sensorInterpretations';
 import {
   buildMultiSeriesChartData,
   CHART_TIME_RANGE_CONFIG,
@@ -26,7 +26,8 @@ import {
   usesRainStateAxis,
   type ChartTimeRange,
 } from '@/lib/chartUtils';
-import { formatAbsoluteTime } from '@/lib/timeUtils';
+import { formatAbsoluteTimeInZone, getTimezoneLabel } from '@/lib/stationTime';
+import { formatRainChartTick } from '@/lib/sensorInterpretations';
 import { cn } from '@/lib/utils';
 
 interface StationHistoryChartProps {
@@ -40,6 +41,80 @@ interface StationHistoryChartProps {
   getSensorUnit: (type: string) => string;
   toDisplayNumber: (type: string, value: string) => number | null;
   onTimeRangeChange: (range: ChartTimeRange) => void;
+  stationTimeZone?: string;
+}
+
+interface ChartTooltipContentProps {
+  active?: boolean;
+  payload?: TooltipContentProps<number, string>['payload'];
+  label?: string | number;
+  stationTimeZone: string;
+  showViewerTime: boolean;
+  activeSensors: string[];
+  formatDisplayNumber: (type: string, displayNumber: number) => string;
+}
+
+function ChartTooltipContent({
+  active,
+  payload,
+  label,
+  stationTimeZone,
+  showViewerTime,
+  activeSensors,
+  formatDisplayNumber,
+}: ChartTooltipContentProps) {
+  if (!active || !payload?.length || label == null) return null;
+
+  const timestamp = Number(label);
+  const viewerTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const sameZone = stationTimeZone === viewerTimeZone;
+
+  const sorted = [...payload].sort(
+    (a, b) =>
+      activeSensors.indexOf(String(a.dataKey)) -
+      activeSensors.indexOf(String(b.dataKey)),
+  );
+
+  return (
+    <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-sm">
+      <p className="font-medium tabular-nums">
+        {formatAbsoluteTimeInZone(timestamp, stationTimeZone)}
+      </p>
+      {showViewerTime && !sameZone && (
+        <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
+          Your time: {formatAbsoluteTimeInZone(timestamp, viewerTimeZone)}
+        </p>
+      )}
+      <ul className="mt-2 space-y-1">
+        {sorted.map((entry) => {
+          const type = String(entry.dataKey ?? entry.name);
+          const numeric =
+            typeof entry.value === 'number'
+              ? entry.value
+              : Number.parseFloat(String(entry.value));
+          const display = !Number.isFinite(numeric)
+            ? '—'
+            : type === 'rain'
+              ? formatRainChartTick(numeric)
+              : formatDisplayNumber(type, numeric);
+
+          return (
+            <li key={type} className="flex items-center justify-between gap-4">
+              <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                <span
+                  className="h-0.5 w-3 rounded-full"
+                  style={{ backgroundColor: entry.color }}
+                  aria-hidden
+                />
+                {getSensorName(type)}
+              </span>
+              <span className="font-medium tabular-nums">{display}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }
 
 export function StationHistoryChart({
@@ -53,7 +128,12 @@ export function StationHistoryChart({
   getSensorUnit,
   toDisplayNumber,
   onTimeRangeChange,
+  stationTimeZone,
 }: StationHistoryChartProps) {
+  const viewerTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const chartTimeZone = stationTimeZone ?? viewerTimeZone;
+  const [showViewerTime, setShowViewerTime] = useState(true);
+  const showViewerToggle = stationTimeZone !== undefined && stationTimeZone !== viewerTimeZone;
   const defaultSelection = useMemo(() => {
     if (sensorTypes.length === 0) return [];
     return [sensorTypes.includes('temp') ? 'temp' : sensorTypes[0]];
@@ -162,9 +242,21 @@ export function StationHistoryChart({
           </div>
         )}
 
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          Toggle sensors to compare. Rain chart uses derived states (Dry → Heavy).
-        </p>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+          <p>
+            Chart times in {getTimezoneLabel(chartTimeZone)}. Toggle sensors to compare. Rain
+            chart uses derived states (Dry → Heavy).
+          </p>
+          {showViewerToggle && (
+            <button
+              type="button"
+              onClick={() => setShowViewerTime((current) => !current)}
+              className="shrink-0 text-primary hover:underline"
+            >
+              {showViewerTime ? 'Hide your time' : 'Show your time'}
+            </button>
+          )}
+        </div>
 
         <div className="mt-4">
           {readingsLoading ? (
@@ -191,7 +283,9 @@ export function StationHistoryChart({
                   dataKey="timestamp"
                   domain={[since, until]}
                   scale="time"
-                  tickFormatter={(ts) => formatChartAxisTick(Number(ts), timeRange)}
+                  tickFormatter={(ts) =>
+                    formatChartAxisTick(Number(ts), timeRange, chartTimeZone)
+                  }
                   tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
                   axisLine={{ stroke: 'var(--border)' }}
                   tickLine={false}
@@ -228,27 +322,17 @@ export function StationHistoryChart({
                   );
                 })}
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--card)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
-                  labelFormatter={(label) => formatAbsoluteTime(Number(label))}
-                  formatter={(value, name) => {
-                    const type = String(name);
-                    const numeric =
-                      typeof value === 'number' ? value : Number.parseFloat(String(value));
-                    if (!Number.isFinite(numeric)) return ['—', getSensorName(type)];
-                    if (type === 'rain') {
-                      return [formatRainChartTick(numeric), getSensorName(type)];
-                    }
-                    return [
-                      formatDisplayNumber(type, numeric),
-                      getSensorName(type),
-                    ];
-                  }}
-                  itemSorter={(item) => activeSensors.indexOf(String(item.dataKey))}
+                  content={({ active, payload, label }) => (
+                    <ChartTooltipContent
+                      active={active}
+                      payload={payload}
+                      label={label}
+                      stationTimeZone={chartTimeZone}
+                      showViewerTime={showViewerTime}
+                      activeSensors={activeSensors}
+                      formatDisplayNumber={formatDisplayNumber}
+                    />
+                  )}
                 />
                 {activeSensors.length > 1 && (
                   <Legend

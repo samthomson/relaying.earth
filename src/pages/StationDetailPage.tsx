@@ -31,6 +31,7 @@ import { IdentityRows } from '@/components/IdentityRows';
 import { StationSensorList } from '@/components/StationSensorList';
 import { StationLocalTimePanel } from '@/components/StationLocalTimePanel';
 import { SensorInterpretationGuide } from '@/components/SensorInterpretationGuide';
+import { getStationCoordinates, getStationTimezone } from '@/lib/stationTime';
 import {
   CHART_TIME_RANGE_CONFIG,
   type ChartTimeRange,
@@ -180,6 +181,10 @@ const StationDetailPage = () => {
   ).length;
 
   const npub = nip19.npubEncode(station.pubkey);
+  const stationCoords = getStationCoordinates(station);
+  const stationTimeZone = stationCoords
+    ? getStationTimezone(stationCoords.lat, stationCoords.lng)
+    : undefined;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -356,6 +361,7 @@ const StationDetailPage = () => {
               getSensorUnit={getSensorUnit}
               toDisplayNumber={toDisplayNumber}
               onTimeRangeChange={setTimeRange}
+              stationTimeZone={stationTimeZone}
             />
 
             {/* Recent events table */}

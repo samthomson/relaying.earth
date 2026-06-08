@@ -12,6 +12,17 @@ export function getStationTimezone(lat: number, lng: number): string {
   }
 }
 
+export function formatAbsoluteTimeInZone(
+  unixSeconds: number,
+  timeZone: string,
+): string {
+  return new Date(unixSeconds * 1000).toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone,
+  });
+}
+
 export function formatTimeInZone(date: Date, timeZone: string): string {
   return new Intl.DateTimeFormat(undefined, {
     hour: 'numeric',
