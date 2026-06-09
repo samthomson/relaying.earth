@@ -9,7 +9,7 @@ export interface ChartPoint {
 
 export type MultiChartPoint = {
   timestamp: number;
-} & Record<string, number | undefined>;
+} & Record<string, number | null | undefined>;
 
 export type ChartTimeRange = '1h' | '24h' | '7d';
 
@@ -94,18 +94,80 @@ export function downsampleChartPoints(
   return [...buckets.values()].sort((a, b) => a.timestamp - b.timestamp);
 }
 
+/** Bucket centres aligned with {@link buildChartTimeBuckets} in chartSampling. */
+export function buildChartBucketCenters(
+  since: number,
+  until: number,
+  bucketSeconds: number,
+  bucketCount: number,
+): number[] {
+  const centers: number[] = [];
+
+  for (let index = bucketCount - 1; index >= 0; index -= 1) {
+    const bucketUntil = until - index * bucketSeconds;
+    const bucketSince = bucketUntil - bucketSeconds;
+    const center = bucketSince + bucketSeconds / 2;
+    if (center >= since) {
+      centers.push(center);
+    }
+  }
+
+  return centers.sort((a, b) => a - b);
+}
+
+function fillMissingChartBuckets(
+  points: MultiChartPoint[],
+  sensorTypes: string[],
+  since: number,
+  until: number,
+  bucketSeconds: number,
+  bucketCount: number,
+): MultiChartPoint[] {
+  const dataByTime = new Map(points.map((point) => [point.timestamp, point]));
+  const centers = buildChartBucketCenters(since, until, bucketSeconds, bucketCount);
+
+  return centers.map((timestamp) => {
+    const existing = dataByTime.get(timestamp);
+    const row: MultiChartPoint = { timestamp };
+
+    for (const sensorType of sensorTypes) {
+      const value = existing?.[sensorType];
+      row[sensorType] =
+        value === undefined || value === null || Number.isNaN(value) ? null : value;
+    }
+
+    return row;
+  });
+}
+
+export function chartHasSensorData(
+  points: MultiChartPoint[],
+  sensorTypes: string[],
+): boolean {
+  return points.some((point) =>
+    sensorTypes.some((type) => {
+      const value = point[type];
+      return value !== undefined && value !== null && Number.isFinite(value);
+    }),
+  );
+}
+
 /** Merge series for chart display. Supports pre-sampled bucket readings. */
 export function buildMultiSeriesChartData(
   readings: Array<WeatherReading & { chartTimestamp?: number }>,
   sensorTypes: string[],
   since: number,
+  until: number,
   bucketSeconds: number,
+  bucketCount: number,
   toDisplayNumber: (type: string, value: string) => number | null,
 ): MultiChartPoint[] {
   const toValue = (type: string, value: string) =>
     toChartNumericValue(type, value, toDisplayNumber);
 
   const isSampled = readings.some((reading) => reading.chartTimestamp !== undefined);
+  let sparse: MultiChartPoint[];
+
   if (isSampled) {
     const merged = new Map<number, MultiChartPoint>();
     for (const reading of readings) {
@@ -121,27 +183,36 @@ export function buildMultiSeriesChartData(
       }
       merged.set(timestamp, row);
     }
-    return [...merged.values()].sort((a, b) => a.timestamp - b.timestamp);
-  }
+    sparse = [...merged.values()].sort((a, b) => a.timestamp - b.timestamp);
+  } else {
+    const merged = new Map<number, MultiChartPoint>();
 
-  const merged = new Map<number, MultiChartPoint>();
-
-  for (const sensorType of sensorTypes) {
-    const points = downsampleChartPoints(
-      readings,
-      sensorType,
-      since,
-      bucketSeconds,
-      toValue,
-    );
-    for (const point of points) {
-      const row = merged.get(point.timestamp) ?? { timestamp: point.timestamp };
-      row[sensorType] = point.value;
-      merged.set(point.timestamp, row);
+    for (const sensorType of sensorTypes) {
+      const points = downsampleChartPoints(
+        readings,
+        sensorType,
+        since,
+        bucketSeconds,
+        toValue,
+      );
+      for (const point of points) {
+        const row = merged.get(point.timestamp) ?? { timestamp: point.timestamp };
+        row[sensorType] = point.value;
+        merged.set(point.timestamp, row);
+      }
     }
+
+    sparse = [...merged.values()].sort((a, b) => a.timestamp - b.timestamp);
   }
 
-  return [...merged.values()].sort((a, b) => a.timestamp - b.timestamp);
+  return fillMissingChartBuckets(
+    sparse,
+    sensorTypes,
+    since,
+    until,
+    bucketSeconds,
+    bucketCount,
+  );
 }
 
 export function formatChartAxisTick(

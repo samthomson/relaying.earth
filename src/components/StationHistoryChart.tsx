@@ -20,6 +20,7 @@ import { getSensorName } from '@/lib/weatherUtils';
 import {
   buildMultiSeriesChartData,
   CHART_TIME_RANGE_CONFIG,
+  chartHasSensorData,
   formatChartAxisTick,
   getChartSensorColor,
   getChartYAxisUnit,
@@ -75,6 +76,16 @@ function ChartTooltipContent({
       activeSensors.indexOf(String(b.dataKey)),
   );
 
+  const entries = sorted.filter((entry) => {
+    const numeric =
+      typeof entry.value === 'number'
+        ? entry.value
+        : Number.parseFloat(String(entry.value));
+    return Number.isFinite(numeric);
+  });
+
+  if (entries.length === 0) return null;
+
   return (
     <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-sm">
       <p className="font-medium tabular-nums">
@@ -86,7 +97,7 @@ function ChartTooltipContent({
         </p>
       )}
       <ul className="mt-2 space-y-1">
-        {sorted.map((entry) => {
+        {entries.map((entry) => {
           const type = String(entry.dataKey ?? entry.name);
           const numeric =
             typeof entry.value === 'number'
@@ -149,14 +160,22 @@ export function StationHistoryChart({
 
   const chartData = useMemo(() => {
     if (!readings || activeSensors.length === 0) return [];
+    const rangeConfig = CHART_TIME_RANGE_CONFIG[timeRange];
     return buildMultiSeriesChartData(
       readings,
       activeSensors,
       since,
-      CHART_TIME_RANGE_CONFIG[timeRange].bucketSeconds,
+      until,
+      rangeConfig.bucketSeconds,
+      rangeConfig.bucketCount,
       toDisplayNumber,
     );
-  }, [readings, activeSensors, since, timeRange, toDisplayNumber]);
+  }, [readings, activeSensors, since, until, timeRange, toDisplayNumber]);
+
+  const hasChartValues = useMemo(
+    () => chartHasSensorData(chartData, activeSensors),
+    [chartData, activeSensors],
+  );
 
   const toggleSensor = (type: string) => {
     setSelection((current) => {
@@ -265,7 +284,7 @@ export function StationHistoryChart({
             <div className="flex h-80 items-center justify-center text-sm text-muted-foreground">
               No readings in the selected window.
             </div>
-          ) : chartData.length === 0 ? (
+          ) : !hasChartValues ? (
             <div className="flex h-80 items-center justify-center text-sm text-muted-foreground">
               No data for the selected sensors in this window.
             </div>
