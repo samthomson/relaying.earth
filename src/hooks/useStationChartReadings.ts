@@ -76,7 +76,7 @@ async function queryFiltersInChunks(
 
 /**
  * Fetch one reading per chart bucket using targeted Nostr filters
- * (e.g. 96 × 15-minute windows for 24h, 168 × 1-hour windows for 7d).
+ * (e.g. 288 × 5-minute windows for 24h, 168 × 1-hour windows for 7d).
  */
 export function useStationChartReadings({
   pubkey,

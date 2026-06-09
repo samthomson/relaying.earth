@@ -23,8 +23,8 @@ export const CHART_SAMPLING_CONFIG: Record<ChartTimeRange, ChartSamplingConfig> 
   },
   '24h': {
     seconds: 86400,
-    bucketCount: 96,
-    bucketSeconds: 15 * 60,
+    bucketCount: 288,
+    bucketSeconds: 5 * 60,
     label: 'Last 24h',
   },
   '7d': {
