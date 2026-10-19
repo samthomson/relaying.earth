@@ -43,7 +43,7 @@ const StationListPage = () => {
     useLatestReadingsForStations(stationPubkeys);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSensor, setSelectedSensor] = useState<string | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>('sensors');
+  const [sortKey, setSortKey] = useState<SortKey>('recent');
 
   const availableSensors = useMemo(() => {
     if (!stations) return [];
@@ -156,8 +156,8 @@ const StationListPage = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="sensors">Most sensors</SelectItem>
                 <SelectItem value="recent">Recently updated</SelectItem>
+                <SelectItem value="sensors">Most sensors</SelectItem>
                 <SelectItem value="name">Name (A→Z)</SelectItem>
               </SelectContent>
             </Select>
