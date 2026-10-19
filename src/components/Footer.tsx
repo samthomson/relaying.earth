@@ -25,6 +25,11 @@ const externalLinks = [
     icon: Code2,
   },
   {
+    label: 'This website',
+    href: 'https://github.com/samthomson/relaying.earth',
+    icon: Code2,
+  },
+  {
     label: 'About Nostr',
     href: 'https://nostr.com',
     icon: Radio,
