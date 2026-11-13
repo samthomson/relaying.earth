@@ -43,7 +43,8 @@ A replaceable event describing a weather station's configuration and capabilitie
 - `g` (optional): Geohash for location indexing (see NIP-52)
 - `elevation` (optional): Elevation in meters above sea level
 - `power` (optional): Power source type (e.g., `mains`, `solar`, `battery`, `solar_battery`, `usb`)
-- `connectivity` (optional): Connectivity type (e.g., `wifi`, `cellular`, `ethernet`, `lora`, `satellite`)
+- `connectivity` (optional): Connectivity type (e.g. `wifi`, `cellular`, `ethernet`, `lora`, `satellite`)
+- `device_id` (optional): Hardware/device identifier for the station (e.g. a short board serial). Client may display it as the station's hardware identity.
 - `sensor` (repeatable): Sensor types available with model identifier. Format: `["sensor", "<type>", "<model>"]`
 - `sensor_status` (repeatable): Current sensor status. Format: `["sensor_status", "<sensor_type>", "<model>", "<status>"]` where status is `"ok"` or `"418"` (sensor not returning valid data)
 - `alt` (required): Human-readable description per NIP-31 for clients that don't understand weather events

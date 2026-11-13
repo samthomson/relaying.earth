@@ -30,9 +30,15 @@ import { LatestReadingList } from '@/components/LatestReadingList';
 import { ReadingsTable } from '@/components/ReadingsTable';
 import { IdentityRows } from '@/components/IdentityRows';
 import { StationSensorList } from '@/components/StationSensorList';
-import { StationLocalTimePanel } from '@/components/StationLocalTimePanel';
 import { SensorInterpretationGuide } from '@/components/SensorInterpretationGuide';
+import { StationLocalTimePanel } from '@/components/StationLocalTimePanel';
+import {
+  decodeGeohash,
+  groupStationSensors,
+} from '@/lib/weatherUtils';
 import { getStationCoordinates, getStationTimezone } from '@/lib/stationTime';
+import { StationMiniMap } from '@/components/StationMiniMap';
+import { StationMapDialog } from '@/components/StationMapDialog';
 import {
   CHART_TIME_RANGE_CONFIG,
   type ChartTimeRange,
@@ -46,14 +52,6 @@ const StationDetailPage = () => {
   const { nip19: nip19Param } = useParams<{ nip19: string }>();
   const now = useNow(1000);
   const { formatDisplayNumber, getSensorUnit, toDisplayNumber } = useWeatherFormatters();
-  const [timeRange, setTimeRange] = useState<ChartTimeRange>('24h');
-  const [chartWindow, setChartWindow] = useState(() => {
-    const start = Math.floor(Date.now() / 1000);
-    return {
-      since: start - CHART_TIME_RANGE_CONFIG['24h'].seconds,
-      until: start,
-    };
-  });
 
   // Decode NIP-19 identifier
   let pubkey: string | undefined;
@@ -69,6 +67,25 @@ const StationDetailPage = () => {
   } catch {
     // Invalid NIP-19
   }
+
+  const [timeRange, setTimeRange] = useState<ChartTimeRange>('24h');
+  const [visibleEvents, setVisibleEvents] = useState(20);
+  const [visibleEventsPubkey, setVisibleEventsPubkey] = useState<string | undefined>(
+    undefined,
+  );
+  if (visibleEventsPubkey !== pubkey) {
+    // Station changed — reset table pagination during render (React pattern
+    // for adjusting state when a prop changes).
+    setVisibleEventsPubkey(pubkey);
+    setVisibleEvents(20);
+  }
+  const [chartWindow, setChartWindow] = useState(() => {
+    const start = Math.floor(Date.now() / 1000);
+    return {
+      since: start - CHART_TIME_RANGE_CONFIG['24h'].seconds,
+      until: start,
+    };
+  });
 
   const { since, until: chartUntil } = chartWindow;
   useEffect(() => {
@@ -87,7 +104,7 @@ const StationDetailPage = () => {
   const { data: station, isLoading: stationLoading } = useWeatherStation(pubkey);
   const { data: readings, isLoading: readingsLoading } = useStationReadings({
     pubkey,
-    limit: 40,
+    limit: 120,
   });
   const { data: chartReadings, isLoading: chartReadingsLoading } = useStationChartReadings({
     pubkey,
@@ -175,18 +192,18 @@ const StationDetailPage = () => {
     );
   }
 
-  const okSensors = station.sensors.filter(
-    (s) =>
-      !station.sensorStatuses.find(
-        (st) => st.type === s.type && st.model === s.model && st.status !== 'ok',
-      ),
-  ).length;
+  const sensorGroups = groupStationSensors(station);
+  const okSensors = sensorGroups.filter((group) => group.ok).length;
 
   const npub = nip19.npubEncode(station.pubkey);
   const stationCoords = getStationCoordinates(station);
   const stationTimeZone = stationCoords
     ? getStationTimezone(stationCoords.lat, stationCoords.lng)
     : undefined;
+  const mapLat = station.lat ?? decodeGeohash(station.geohash ?? '')?.lat;
+  const mapLng = station.lng ?? decodeGeohash(station.geohash ?? '')?.lng;
+  const eventRows = (readings ?? []).filter((reading) => reading.timestamp >= since);
+  const shownEventRows = eventRows.slice(0, visibleEvents);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -249,8 +266,8 @@ const StationDetailPage = () => {
           <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatTile
               label="Sensors"
-              value={`${okSensors}/${station.sensors.length}`}
-              hint="reporting ok"
+              value={`${okSensors}/${sensorGroups.length}`}
+              hint={`reporting ok · ${station.sensors.length} measurements`}
             />
             <StatTile
               label="Power"
@@ -285,6 +302,14 @@ const StationDetailPage = () => {
         <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
           {/* Left rail */}
           <div className="space-y-4">
+            <Panel icon={<MapPin className="h-3.5 w-3.5" />} title="Identity">
+              <IdentityRows
+                pubkey={station.pubkey}
+                npub={npub}
+                deviceId={station.deviceId}
+              />
+            </Panel>
+
             <Panel
               icon={<Radio className="h-3.5 w-3.5" />}
               title="Latest reading"
@@ -331,15 +356,18 @@ const StationDetailPage = () => {
                   </div>
                 )}
               </div>
-              <StationLocalTimePanel station={station} />
+              {station.geohash && mapLat !== undefined && mapLng !== undefined && (
+                <StationMapDialog geohash={station.geohash} lat={mapLat} lng={mapLng}>
+                  <StationMiniMap geohash={station.geohash} lat={mapLat} lng={mapLng} />
+                </StationMapDialog>
+              )}
+              <div className="mt-3">
+                <StationLocalTimePanel station={station} />
+              </div>
             </Panel>
 
-            <Panel icon={<Cpu className="h-3.5 w-3.5" />} title={`Sensors (${station.sensors.length})`}>
+            <Panel icon={<Cpu className="h-3.5 w-3.5" />} title={`Sensors (${sensorGroups.length})`}>
               <StationSensorList station={station} />
-            </Panel>
-
-            <Panel icon={<MapPin className="h-3.5 w-3.5" />} title="Identity">
-              <IdentityRows pubkey={station.pubkey} npub={npub} />
             </Panel>
           </div>
 
@@ -382,25 +410,39 @@ const StationDetailPage = () => {
                       <Skeleton key={i} className="h-10 w-full" />
                     ))}
                   </div>
-                ) : !readings || readings.length === 0 ? (
+                ) : eventRows.length === 0 ? (
                   <p className="py-6 text-center text-sm text-muted-foreground">
                     No events in this window.
                   </p>
                 ) : (
-                  <ReadingsTable
-                    now={now}
-                    layout="events"
-                    rows={readings
-                      .filter((reading) => reading.timestamp >= since)
-                      .slice(0, 12)
-                      .map((reading) => ({
-                      id: reading.event.id,
-                      timestamp: reading.timestamp,
-                      readings: reading.readings,
-                      eventId: reading.event.id,
-                    }))}
-                    sensorTypes={sensorTypes}
-                  />
+                  <>
+                    <ReadingsTable
+                      now={now}
+                      layout="events"
+                      rows={shownEventRows.map((reading) => ({
+                        id: reading.event.id,
+                        timestamp: reading.timestamp,
+                        readings: reading.readings,
+                        eventId: reading.event.id,
+                      }))}
+                      sensorTypes={sensorTypes}
+                    />
+                    {eventRows.length > shownEventRows.length && (
+                      <div className="mt-4 flex items-center justify-between gap-3">
+                        <span className="text-[11px] text-muted-foreground">
+                          Showing {shownEventRows.length} of {eventRows.length} events — the
+                          rest are already loaded
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setVisibleEvents((count) => count + 20)}
+                        >
+                          Load earlier
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>

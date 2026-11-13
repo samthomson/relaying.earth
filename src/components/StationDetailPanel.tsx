@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import type { WeatherStationMetadata } from '@/lib/weatherUtils';
+import { groupStationSensors } from '@/lib/weatherUtils';
 import { useLatestReading } from '@/hooks/useStationReadings';
 import { ReadingAgeBadge } from '@/components/ReadingAgeBadge';
 import { LatestReadingList, SensorSummary } from '@/components/LatestReadingList';
@@ -18,12 +19,8 @@ interface StationDetailPanelProps {
 export function StationDetailPanel({ station, onClose }: StationDetailPanelProps) {
   const { data: latestReading, isLoading } = useLatestReading(station.pubkey);
   const npub = nip19.npubEncode(station.pubkey);
-  const okSensors = station.sensors.filter(
-    (s) =>
-      !station.sensorStatuses.find(
-        (st) => st.type === s.type && st.model === s.model && st.status !== 'ok',
-      ),
-  ).length;
+  const sensorGroups = groupStationSensors(station);
+  const okSensors = sensorGroups.filter((group) => group.ok).length;
 
   return (
     <aside

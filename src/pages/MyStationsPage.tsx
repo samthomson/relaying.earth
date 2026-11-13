@@ -39,7 +39,11 @@ import {
   useDeleteStationList,
 } from '@/hooks/useStationLists';
 import { useWeatherStations } from '@/hooks/useWeatherStations';
-import type { StationList, WeatherStationMetadata } from '@/lib/weatherUtils';
+import {
+  groupStationSensors,
+  type StationList,
+  type WeatherStationMetadata,
+} from '@/lib/weatherUtils';
 import { useToast } from '@/hooks/useToast';
 
 interface ListFormState {
@@ -409,7 +413,7 @@ const MyStationsPage = () => {
                                   </span>
                                 )}
                                 <span className="truncate">
-                                  {station.sensors.length} sensors
+                                  {groupStationSensors(station).length} sensors
                                 </span>
                               </div>
                             </div>

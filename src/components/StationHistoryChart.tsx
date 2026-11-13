@@ -177,6 +177,12 @@ export function StationHistoryChart({
     [chartData, activeSensors],
   );
 
+  const allActive = activeSensors.length === sensorTypes.length;
+
+  const toggleAllSensors = () => {
+    setSelection(allActive ? defaultSelection : [...sensorTypes]);
+  };
+
   const toggleSensor = (type: string) => {
     setSelection((current) => {
       const base = current.length > 0 ? current : defaultSelection;
@@ -226,8 +232,21 @@ export function StationHistoryChart({
           </div>
         </div>
 
-        {sensorTypes.length > 0 && (
+        {sensorTypes.length > 1 && (
           <div className="mt-4 flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={toggleAllSensors}
+              aria-pressed={allActive}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors',
+                allActive
+                  ? 'border-primary bg-primary/10 text-foreground'
+                  : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground',
+              )}
+            >
+              All
+            </button>
             {sensorTypes.map((type) => {
               const isActive = activeSensors.includes(type);
               const color = getChartSensorColor(type);

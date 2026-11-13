@@ -3,6 +3,8 @@ import { CopyButton } from '@/components/CopyButton';
 interface IdentityRowsProps {
   pubkey: string;
   npub: string;
+  /** Optional hardware identifier from the station's `device_id` tag. */
+  deviceId?: string;
 }
 
 function IdentityRow({
@@ -21,7 +23,7 @@ function IdentityRow({
       <span className="text-xs text-muted-foreground">{label}</span>
       <div className="relative rounded-md border border-border/60 bg-muted/40 py-1.5 pl-2.5 pr-8">
         <span
-          className="block break-all font-mono text-[10px] leading-relaxed text-foreground"
+          className="block break-all font-mono text-xs leading-relaxed text-foreground"
           title={copyValue}
         >
           {display}
@@ -37,21 +39,29 @@ function IdentityRow({
   );
 }
 
-export function IdentityRows({ pubkey, npub }: IdentityRowsProps) {
+export function IdentityRows({ pubkey, npub, deviceId }: IdentityRowsProps) {
   return (
     <div className="space-y-3 text-sm">
       <IdentityRow
-        label="Pubkey"
-        display={`${pubkey.slice(0, 8)}…${pubkey.slice(-6)}`}
-        copyValue={pubkey}
-        copyLabel="Copy pubkey"
-      />
-      <IdentityRow
-        label="npub"
+        label="npub · network address"
         display={npub}
         copyValue={npub}
         copyLabel="Copy npub"
       />
+      <IdentityRow
+        label="pubkey (hex)"
+        display={pubkey}
+        copyValue={pubkey}
+        copyLabel="Copy pubkey"
+      />
+      {deviceId && (
+        <IdentityRow
+          label="device id"
+          display={deviceId}
+          copyValue={deviceId}
+          copyLabel="Copy device id"
+        />
+      )}
     </div>
   );
 }

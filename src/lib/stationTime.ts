@@ -53,6 +53,32 @@ export function getViewerTimezoneLabel(): string {
   return getTimezoneLabel(Intl.DateTimeFormat().resolvedOptions().timeZone);
 }
 
+/** UTC offset (ms) of `timeZone` at the given instant. */
+function zoneOffsetMs(instant: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(instant);
+  const byType = Object.fromEntries(
+    parts.map((part) => [part.type, part.value]),
+  ) as Record<string, string>;
+  const asUtc = Date.UTC(
+    Number(byType.year),
+    Number(byType.month) - 1,
+    Number(byType.day),
+    Number(byType.hour) % 24,
+    Number(byType.minute),
+    Number(byType.second),
+  );
+  return asUtc - instant.getTime();
+}
+
 /** Calendar date at the station, used for sunrise/sunset calculations. */
 export function getStationCalendarDate(now: Date, timeZone: string): Date {
   const dateKey = new Intl.DateTimeFormat('en-CA', {
@@ -61,7 +87,10 @@ export function getStationCalendarDate(now: Date, timeZone: string): Date {
     month: '2-digit',
     day: '2-digit',
   }).format(now);
-  return new Date(`${dateKey}T12:00:00`);
+  // Noon at the station, not viewer-local noon — otherwise the solar day
+  // drifts by the viewer's UTC offset and countdowns land on the wrong day.
+  const probe = new Date(`${dateKey}T12:00:00Z`);
+  return new Date(probe.getTime() - zoneOffsetMs(probe, timeZone));
 }
 
 export interface SunEventCountdown {

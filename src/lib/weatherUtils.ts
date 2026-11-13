@@ -15,6 +15,8 @@ export interface WeatherStationMetadata {
   elevation?: number;
   power?: string;
   connectivity?: string;
+  /** Hardware/device identifier from the optional `device_id` tag. */
+  deviceId?: string;
   sensors: Array<{ type: string; model: string }>;
   sensorStatuses: Array<{ type: string; model: string; status: string }>;
   event: NostrEvent;
@@ -67,6 +69,7 @@ export function parseStationMetadata(event: NostrEvent): WeatherStationMetadata 
   const elevationTag = event.tags.find(([tag]) => tag === 'elevation')?.[1];
   const power = event.tags.find(([tag]) => tag === 'power')?.[1];
   const connectivity = event.tags.find(([tag]) => tag === 'connectivity')?.[1];
+  const deviceId = event.tags.find(([tag]) => tag === 'device_id')?.[1];
 
   // Decode geohash if present
   let lat: number | undefined;
@@ -102,10 +105,45 @@ export function parseStationMetadata(event: NostrEvent): WeatherStationMetadata 
     elevation: elevationTag ? parseFloat(elevationTag) : undefined,
     power,
     connectivity,
+    deviceId,
     sensors,
     sensorStatuses,
     event,
   };
+}
+
+/** Declared measurement entries grouped by physical hardware model. */
+export interface StationSensorGroup {
+  model: string;
+  types: string[];
+  /** All measurement types for this model report ok. */
+  ok: boolean;
+}
+
+/**
+ * A station declares one sensor entry per measurement type (a PMS5003 yields
+ * pm1, pm25 and pm10). Physical hardware = distinct models.
+ */
+export function groupStationSensors(
+  station: Pick<WeatherStationMetadata, 'sensors' | 'sensorStatuses'>,
+): StationSensorGroup[] {
+  const groups = new Map<string, { types: string[]; ok: boolean }>();
+
+  for (const sensor of station.sensors) {
+    const group = groups.get(sensor.model) ?? { types: [], ok: true };
+    const status = station.sensorStatuses.find(
+      (st) => st.type === sensor.type && st.model === sensor.model,
+    );
+    group.types.push(sensor.type);
+    group.ok = group.ok && (!status || status.status === 'ok');
+    groups.set(sensor.model, group);
+  }
+
+  return [...groups.entries()].map(([model, group]) => ({
+    model,
+    types: group.types,
+    ok: group.ok,
+  }));
 }
 
 /**

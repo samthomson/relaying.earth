@@ -10,9 +10,13 @@ export function formatRelativeTime(unixSeconds: number, now = Date.now()): strin
   const minutes = Math.floor(deltaSec / 60);
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) {
+    return minutes % 60 === 0 ? `${hours}h ago` : `${hours}h ${minutes % 60}m ago`;
+  }
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
+  if (days < 7) {
+    return hours % 24 === 0 ? `${days}d ago` : `${days}d ${hours % 24}h ago`;
+  }
   // Older than a week — show a short absolute date
   return new Date(unixSeconds * 1000).toLocaleDateString(undefined, {
     month: 'short',

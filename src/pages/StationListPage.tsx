@@ -22,8 +22,12 @@ import { useWeatherStations } from '@/hooks/useWeatherStations';
 import { useLatestReadingsForStations } from '@/hooks/useLatestReadingsForStations';
 import { ReadingAgeBadge } from '@/components/ReadingAgeBadge';
 import { StationCardReadings } from '@/components/StationCardReadings';
-import { getSensorName } from '@/lib/weatherUtils';
-import type { WeatherStationMetadata, WeatherReading } from '@/lib/weatherUtils';
+import {
+  getSensorName,
+  groupStationSensors,
+  type WeatherStationMetadata,
+  type WeatherReading,
+} from '@/lib/weatherUtils';
 
 type SortKey = 'sensors' | 'name' | 'recent';
 
@@ -267,12 +271,8 @@ function StationListCard({
   readingsLoading: boolean;
 }) {
   const npub = nip19.npubEncode(station.pubkey);
-  const okSensors = station.sensors.filter(
-    (s) =>
-      !station.sensorStatuses.find(
-        (st) => st.type === s.type && st.model === s.model && st.status !== 'ok',
-      ),
-  ).length;
+  const sensorGroups = groupStationSensors(station);
+  const okSensors = sensorGroups.filter((group) => group.ok).length;
 
   return (
     <Link to={`/${npub}`} className="group block h-full">
@@ -303,7 +303,7 @@ function StationListCard({
               ·
             </span>
             <span className="shrink-0">
-              {okSensors}/{station.sensors.length} sensors
+              {okSensors}/{sensorGroups.length} sensors
             </span>
           </div>
 
