@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 
+import { useNow } from '@/hooks/useNow';
+
 import { EventIdCopy } from '@/components/EventIdCopy';
 import { SensorReadingValue } from '@/components/SensorReadingValue';
 import { useWeatherFormatters } from '@/hooks/useWeatherFormatters';
@@ -23,6 +25,20 @@ interface ReadingsTableProps {
   /** `grid` for latest-reading cards; `events` for responsive event history. */
   layout?: 'grid' | 'events';
   className?: string;
+  /** Shared ticking clock from the host page, so every timestamp agrees. */
+  now?: Date;
+}
+
+/**
+ * Colour for a row's relative timestamp by age: fresh readings pop in the
+ * brand orange, recent ones stay neutral, old ones recede. Rows are sorted
+ * newest-first, so the eye reads a freshness gradient top to bottom.
+ */
+function readingAgeClass(timestamp: number, now: Date): string {
+  const ageSec = Math.max(0, now.getTime() / 1000 - timestamp);
+  if (ageSec < 15 * 60) return 'text-orange-700';
+  if (ageSec >= 60 * 60) return 'text-muted-foreground';
+  return 'text-foreground';
 }
 
 function ReadingGrid({
@@ -53,19 +69,22 @@ function ReadingGrid({
   );
 }
 
-function EventCards({ rows }: { rows: ReadingTableRow[] }) {
+function EventCards({ rows, now }: { rows: ReadingTableRow[]; now: Date }) {
   return (
     <div className="space-y-3 md:hidden">
-      {rows.map((row) => (
+      {rows.map((row, index) => (
         <article
           key={row.id}
-          className="rounded-lg border border-border/60 bg-card/40 p-3"
+          className={cn(
+            'rounded-lg border border-border/60 p-3',
+            index === 0 ? 'border-primary/25 bg-primary/5' : 'bg-card/40',
+          )}
         >
           <div className="mb-3 flex items-start justify-between gap-3">
             {row.timestamp !== undefined ? (
               <div>
-                <div className="font-medium text-foreground">
-                  {formatRelativeTime(row.timestamp)}
+                <div className={cn('font-medium', readingAgeClass(row.timestamp, now))}>
+                  {formatRelativeTime(row.timestamp, now.getTime())}
                 </div>
                 <div className="mt-0.5 font-mono text-[11px] text-muted-foreground">
                   {formatAbsoluteTime(row.timestamp)}
@@ -86,9 +105,11 @@ function EventCards({ rows }: { rows: ReadingTableRow[] }) {
 function EventTable({
   rows,
   sensorTypes,
+  now,
 }: {
   rows: ReadingTableRow[];
   sensorTypes: string[];
+  now: Date;
 }) {
   const { formatSensorValue } = useWeatherFormatters();
 
@@ -107,16 +128,19 @@ function EventTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
+          {rows.map((row, index) => (
             <tr
               key={row.id}
-              className="border-b border-border/40 last:border-b-0 hover:bg-muted/15"
+              className={cn(
+                'border-b border-border/40 last:border-b-0 hover:bg-muted/15',
+                index === 0 && 'bg-primary/5',
+              )}
             >
               <td className="py-2.5 pr-4 align-top whitespace-nowrap">
                 {row.timestamp !== undefined ? (
                   <>
-                    <div className="font-medium text-foreground">
-                      {formatRelativeTime(row.timestamp)}
+                    <div className={cn('font-medium', readingAgeClass(row.timestamp, now))}>
+                      {formatRelativeTime(row.timestamp, now.getTime())}
                     </div>
                     <div className="mt-0.5 font-mono text-[11px] text-muted-foreground">
                       {formatAbsoluteTime(row.timestamp)}
@@ -164,7 +188,11 @@ export function ReadingsTable({
   sensorTypes: fixedSensorTypes,
   layout = 'grid',
   className,
+  now: sharedNow,
 }: ReadingsTableProps) {
+  // Fallback for pages that don't pass a clock; 1s cadence keeps "Xs ago" smooth.
+  const ownNow = useNow(1000);
+  const now = sharedNow ?? ownNow;
   const sensorTypes = useMemo(() => {
     if (fixedSensorTypes && fixedSensorTypes.length > 0) {
       return sortSensorTypes(fixedSensorTypes);
@@ -186,8 +214,8 @@ export function ReadingsTable({
 
   return (
     <div className={className}>
-      <EventCards rows={rows} />
-      <EventTable rows={rows} sensorTypes={sensorTypes} />
+      <EventCards rows={rows} now={now} />
+      <EventTable rows={rows} sensorTypes={sensorTypes} now={now} />
     </div>
   );
 }

@@ -25,6 +25,7 @@ import { useWeatherStation } from '@/hooks/useWeatherStations';
 import { useStationReadings } from '@/hooks/useStationReadings';
 import { useStationChartReadings } from '@/hooks/useStationChartReadings';
 import { useWeatherFormatters } from '@/hooks/useWeatherFormatters';
+import { useNow } from '@/hooks/useNow';
 import { LatestReadingList } from '@/components/LatestReadingList';
 import { ReadingsTable } from '@/components/ReadingsTable';
 import { IdentityRows } from '@/components/IdentityRows';
@@ -43,13 +44,14 @@ import {
 
 const StationDetailPage = () => {
   const { nip19: nip19Param } = useParams<{ nip19: string }>();
+  const now = useNow(1000);
   const { formatDisplayNumber, getSensorUnit, toDisplayNumber } = useWeatherFormatters();
   const [timeRange, setTimeRange] = useState<ChartTimeRange>('24h');
   const [chartWindow, setChartWindow] = useState(() => {
-    const now = Math.floor(Date.now() / 1000);
+    const start = Math.floor(Date.now() / 1000);
     return {
-      since: now - CHART_TIME_RANGE_CONFIG['24h'].seconds,
-      until: now,
+      since: start - CHART_TIME_RANGE_CONFIG['24h'].seconds,
+      until: start,
     };
   });
 
@@ -71,10 +73,10 @@ const StationDetailPage = () => {
   const { since, until: chartUntil } = chartWindow;
   useEffect(() => {
     const update = () => {
-      const now = Math.floor(Date.now() / 1000);
+      const windowEnd = Math.floor(Date.now() / 1000);
       setChartWindow({
-        since: now - CHART_TIME_RANGE_CONFIG[timeRange].seconds,
-        until: now,
+        since: windowEnd - CHART_TIME_RANGE_CONFIG[timeRange].seconds,
+        until: windowEnd,
       });
     };
     update();
@@ -237,7 +239,7 @@ const StationDetailPage = () => {
                 )}
                 <span className="inline-flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" />
-                  Updated {formatRelativeTime(station.event.created_at)}
+                  Updated {formatRelativeTime(station.event.created_at, now.getTime())}
                 </span>
               </div>
             </div>
@@ -264,7 +266,7 @@ const StationDetailPage = () => {
               label="Last reading"
               value={
                 latestReading
-                  ? formatRelativeTime(latestReading.timestamp)
+                  ? formatRelativeTime(latestReading.timestamp, now.getTime())
                   : readingsLoading
                     ? '…'
                     : '—'
@@ -297,7 +299,7 @@ const StationDetailPage = () => {
               ) : latestReading ? (
                 <>
                   <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                    {formatRelativeTime(latestReading.timestamp)}
+                    {formatRelativeTime(latestReading.timestamp, now.getTime())}
                   </p>
                   <LatestReadingList readings={latestReading.readings} />
                 </>
@@ -386,6 +388,7 @@ const StationDetailPage = () => {
                   </p>
                 ) : (
                   <ReadingsTable
+                    now={now}
                     layout="events"
                     rows={readings
                       .filter((reading) => reading.timestamp >= since)

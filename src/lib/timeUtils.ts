@@ -5,8 +5,7 @@
  * and fall back to absolute date for older events.
  */
 export function formatRelativeTime(unixSeconds: number, now = Date.now()): string {
-  const deltaSec = Math.floor(now / 1000 - unixSeconds);
-  if (deltaSec < 5) return 'just now';
+  const deltaSec = Math.max(0, Math.floor(now / 1000 - unixSeconds));
   if (deltaSec < 60) return `${deltaSec}s ago`;
   const minutes = Math.floor(deltaSec / 60);
   if (minutes < 60) return `${minutes}m ago`;

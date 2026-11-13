@@ -259,3 +259,42 @@ export function getSensorIndicatorClass(indicator: SensorIndicator): string {
       }
   }
 }
+
+/**
+ * Text-safe counterparts to `getSensorIndicatorClass` — AA contrast on the
+ * paper-white canvas, same hue semantics as the indicator dots.
+ */
+export function getSensorTextClass(indicator: SensorIndicator): string {
+  switch (indicator.kind) {
+    case 'light':
+      return indicator.level === 'dark' ? 'text-stone-700' : 'text-amber-700';
+    case 'rain':
+      switch (indicator.level) {
+        case 'dry':
+          return 'text-amber-700';
+        case 'damp':
+          return 'text-stone-600';
+        case 'wet':
+          return 'text-sky-700';
+        case 'raining':
+          return 'text-blue-700';
+        case 'heavy':
+          return 'text-blue-900';
+      }
+      break;
+    case 'air':
+      switch (indicator.level) {
+        case 'excellent':
+        case 'great':
+          return 'text-emerald-700';
+        case 'good':
+          return 'text-lime-700';
+        case 'moderate':
+          return 'text-amber-700';
+        case 'unhealthy':
+          return 'text-orange-700';
+        case 'hazardous':
+          return 'text-red-700';
+      }
+  }
+}

@@ -2,6 +2,8 @@ import { cn } from '@/lib/utils';
 import {
   getSensorIndicatorClass,
   getSensorInterpretation,
+  getSensorTextClass,
+  type SensorInterpretation,
 } from '@/lib/sensorInterpretations';
 
 interface SensorReadingValueProps {
@@ -33,7 +35,16 @@ export function SensorReadingValue({
 
     return (
       <span className={cn('inline-flex flex-col items-end gap-0.5', className)}>
-        <span className="font-medium tabular-nums text-foreground">{formattedValue}</span>
+        <span
+          className={cn(
+            'font-semibold tabular-nums',
+            interpretation.indicator
+              ? getSensorTextClass(interpretation.indicator)
+              : 'text-foreground',
+          )}
+        >
+          {formattedValue}
+        </span>
         <SensorInterpretationBadge interpretation={interpretation} />
       </span>
     );
@@ -41,7 +52,14 @@ export function SensorReadingValue({
 
   return (
     <div className={cn('space-y-1', className)}>
-      <div className="text-sm font-semibold tabular-nums leading-none text-foreground">
+      <div
+        className={cn(
+          'text-sm font-semibold tabular-nums leading-none',
+          interpretation?.indicator
+            ? getSensorTextClass(interpretation.indicator)
+            : 'text-foreground',
+        )}
+      >
         {formattedValue}
       </div>
       <div className="min-h-[14px]">
@@ -56,7 +74,7 @@ export function SensorReadingValue({
 function SensorInterpretationBadge({
   interpretation,
 }: {
-  interpretation: NonNullable<ReturnType<typeof getSensorInterpretation>>;
+  interpretation: SensorInterpretation;
 }) {
   return (
     <span

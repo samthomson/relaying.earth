@@ -360,3 +360,13 @@ These values map to Tailwind tokens via CSS variables in `src/index.css` (`--bac
 Use `git status` / `git diff` to review changes and `git log` to learn project conventions when helpful. If you make a mistake, `git checkout` restores files.
 
 **Do not commit or push unless the user explicitly asks.** The user owns the git history — leave changes unstaged or staged in the working tree and let them commit and push when they are ready. If they ask you to commit, follow their instructions; otherwise never run `git commit` or `git push`.
+
+## Assistant Iteration Workflow
+
+How the coding agent should work in this repo to stay fast and avoid wasted loops:
+
+- **Fast feedback while iterating.** Run `npx tsc --noEmit` (plus `npx eslint --cache` when lint matters) between edits. Run the full `npm run test` script **once**, before finishing — not after every micro-edit.
+- **Scope verification to the change.** A display-string change needs the test suite and one quick look, not a multi-round browser session. Feature-level behavior gets real browser verification.
+- **Keep browser probes short.** Single `evaluate` calls with waits ≤ 30s. Headless/background tabs suspend timers, so a frozen countdown between probes is throttling, not a bug — re-probe instead of debugging it.
+- **Dev server: use port 5199.** Port 5173 is commonly occupied by other local apps. Stop the server when the task ends.
+- **Re-read immediately before multi-hunk edits.** Edits renumber lines; stale anchors corrupt files and cost a repair cycle. Verify the intended construct before patching.

@@ -1,5 +1,6 @@
-import { Badge } from '@/components/ui/badge';
 import { formatRelativeTime } from '@/lib/timeUtils';
+import { useNow } from '@/hooks/useNow';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface ReadingAgeBadgeProps {
@@ -15,6 +16,7 @@ export function ReadingAgeBadge({
   emptyLabel = 'No readings',
   className,
 }: ReadingAgeBadgeProps) {
+  const now = useNow(1000);
   const baseClass =
     'shrink-0 font-mono text-[10px] uppercase tracking-widest';
 
@@ -49,7 +51,7 @@ export function ReadingAgeBadge({
         className,
       )}
     >
-      {formatRelativeTime(timestamp)}
+      {formatRelativeTime(timestamp, now.getTime())}
     </Badge>
   );
 }

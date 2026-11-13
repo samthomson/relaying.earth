@@ -1,10 +1,49 @@
-import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNostr } from '@nostrify/react';
 import {
   WEATHER_STATION_METADATA_KIND,
   parseStationMetadata,
   type WeatherStationMetadata,
 } from '@/lib/weatherUtils';
+
+/**
+ * Subscribe to station metadata updates from `pubkey` and merge them into the
+ * query cache as they arrive (the kind is replaceable — newest event wins).
+ */
+function useLiveStationMetadata(pubkey: string | undefined) {
+  const { nostr } = useNostr();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!pubkey) return;
+
+    const controller = new AbortController();
+    const since = Math.floor(Date.now() / 1000);
+
+    void (async () => {
+      try {
+        for await (const msg of nostr.req(
+          [{ kinds: [WEATHER_STATION_METADATA_KIND], authors: [pubkey], since }],
+          { signal: controller.signal },
+        )) {
+          if (msg[0] !== 'EVENT') continue;
+          const parsed = parseStationMetadata(msg[2]);
+          if (!parsed) continue;
+
+          queryClient.setQueriesData<WeatherStationMetadata | null>(
+            { queryKey: ['weatherStation', pubkey] },
+            (old) => (!old || parsed.event.created_at > old.event.created_at ? parsed : old),
+          );
+        }
+      } catch {
+        // Aborted on unmount, or the subscription dropped — polling remains.
+      }
+    })();
+
+    return () => controller.abort();
+  }, [nostr, pubkey, queryClient]);
+}
 
 interface UseWeatherStationsOptions {
   geohash?: string;
@@ -65,6 +104,9 @@ export function useWeatherStations(options: UseWeatherStationsOptions = {}) {
 export function useWeatherStation(pubkey: string | undefined) {
   const { nostr } = useNostr();
 
+  // Keep metadata (and the "Updated" timestamp) current while mounted.
+  useLiveStationMetadata(pubkey);
+
   return useQuery({
     queryKey: ['weatherStation', pubkey],
     queryFn: async ({ signal }) => {
@@ -87,5 +129,6 @@ export function useWeatherStation(pubkey: string | undefined) {
     },
     enabled: !!pubkey,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchInterval: 5 * 60 * 1000, // Safety net if the subscription drops
   });
 }
