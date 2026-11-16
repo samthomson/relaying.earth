@@ -60,6 +60,27 @@ export const PM10_TIERS: PmTierDefinition[] = [
   { level: 'unhealthy', label: 'Unhealthy', maxExclusive: 254 },
 ];
 
+/**
+ * Sensirion VOC/NOx Index (SGP41): 1–500 relative scale where 100 is the
+ * recent daily average — values below 100 are cleaner than average.
+ */
+export const SGP41_INDEX_TIERS: PmTierDefinition[] = [
+  { level: 'excellent', label: 'Excellent', maxExclusive: 50 },
+  { level: 'great', label: 'Great', maxExclusive: 100 },
+  { level: 'good', label: 'Good', maxExclusive: 150 },
+  { level: 'moderate', label: 'Moderate', maxExclusive: 250 },
+  { level: 'unhealthy', label: 'Unhealthy', maxExclusive: 350 },
+];
+
+/** CO₂ in ppm (SCD41 et al.): ~420 ppm is outdoor ambient. */
+export const CO2_TIERS: PmTierDefinition[] = [
+  { level: 'excellent', label: 'Fresh air', maxExclusive: 450 },
+  { level: 'great', label: 'Great', maxExclusive: 800 },
+  { level: 'good', label: 'Good', maxExclusive: 1200 },
+  { level: 'moderate', label: 'Stale', maxExclusive: 2000 },
+  { level: 'unhealthy', label: 'Unhealthy', maxExclusive: 3000 },
+];
+
 /** MH-RD rain sensor: higher raw value = drier (typically 0–4095). */
 export const RAIN_DRY_MAX = 4095;
 
@@ -87,6 +108,25 @@ function formatPmGuideTiers(tiers: PmTierDefinition[]) {
   rows.push({
     label: 'Hazardous',
     range: `${lastMax}+ µg/m³`,
+    indicator: { kind: 'air', level: 'hazardous' },
+  });
+  return rows;
+}
+
+function formatIndexGuideTiers(tiers: PmTierDefinition[], unit?: string) {
+  const rows = tiers.map((tier, index) => {
+    const min = index === 0 ? 0 : tiers[index - 1].maxExclusive;
+    const suffix = unit ? ` ${unit}` : '';
+    return {
+      label: tier.label,
+      range: `${min}–${tier.maxExclusive}${suffix}`,
+      indicator: { kind: 'air' as const, level: tier.level },
+    };
+  });
+  const suffix = unit ? ` ${unit}` : '';
+  rows.push({
+    label: 'Hazardous',
+    range: `${tiers[tiers.length - 1].maxExclusive}+${suffix}`,
     indicator: { kind: 'air', level: 'hazardous' },
   });
   return rows;
@@ -124,11 +164,23 @@ export const SENSOR_INTERPRETATION_GUIDE: InterpretationGuideSection[] = [
     tiers: formatPmGuideTiers(PM_FINE_TIERS),
   },
   {
-    title: 'PM10',
-    unit: 'µg/m³',
+    title: 'CO₂',
+    unit: 'ppm',
     intro:
-      'Larger particulate matter uses the same band names with thresholds scaled for typical PM10 readings.',
-    tiers: formatPmGuideTiers(PM10_TIERS),
+      'True CO₂ concentration (e.g. SCD41). Outdoor air sits near 420 ppm; levels above ~1000 ppm usually mean poor ventilation.',
+    tiers: formatIndexGuideTiers(CO2_TIERS, 'ppm'),
+  },
+  {
+    title: 'VOC index',
+    intro:
+      'Sensirion VOC Index (SGP41): a relative 1–500 score where 100 is the recent daily average. Lower is cleaner; it measures organic gas load, not a fixed concentration.',
+    tiers: formatIndexGuideTiers(SGP41_INDEX_TIERS),
+  },
+  {
+    title: 'NOx index',
+    intro:
+      'Sensirion NOx Index (SGP41): the same 1–500 relative scale for nitrogen oxides. Outdoor NOx often reads very low (1–20).',
+    tiers: formatIndexGuideTiers(SGP41_INDEX_TIERS),
   },
 ];
 
@@ -174,7 +226,24 @@ function interpretRain(value: number): SensorInterpretation {
   };
 }
 
-const INTERPRETABLE_SENSORS = new Set(['light', 'rain', 'pm1', 'pm25', 'pm10']);
+function classifyTiers(tiers: PmTierDefinition[], value: number): SensorInterpretation {
+  const tier = tiers.find((entry) => value < entry.maxExclusive);
+  return {
+    label: tier?.label ?? 'Hazardous',
+    indicator: { kind: 'air', level: tier?.level ?? 'hazardous' },
+  };
+}
+
+const INTERPRETABLE_SENSORS = new Set([
+  'light',
+  'rain',
+  'pm1',
+  'pm25',
+  'pm10',
+  'voc_index',
+  'nox_index',
+  'co2',
+]);
 
 export const RAIN_CHART_LABELS = ['Dry', 'Damp', 'Wet', 'Raining', 'Heavy'] as const;
 
@@ -219,6 +288,11 @@ export function getSensorInterpretation(
     case 'pm25':
     case 'pm10':
       return classifyPm(type, numeric);
+    case 'voc_index':
+    case 'nox_index':
+      return classifyTiers(SGP41_INDEX_TIERS, numeric);
+    case 'co2':
+      return classifyTiers(CO2_TIERS, numeric);
     default:
       return null;
   }

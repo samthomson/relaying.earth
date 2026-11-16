@@ -37,6 +37,9 @@ export const CHART_SENSOR_COLORS: Record<string, string> = {
   pm25: '#db2777',
   pm10: '#9333ea',
   co2: '#57534e',
+  voc_index: '#0d9488',
+  nox_index: '#be123c',
+  gas: '#78716c',
 };
 
 const FALLBACK_CHART_COLORS = [
