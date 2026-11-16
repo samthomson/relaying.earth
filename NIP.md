@@ -92,15 +92,17 @@ Include a reading tag only when the sensor produced a valid value; otherwise omi
 
 | sensor_type | Example Models | Description |
 |-------------|----------------|-------------|
-| `temp` | DHT11, DHT22, BME280 | Temperature in degrees Celsius |
-| `humidity` | DHT11, DHT22, BME280 | Relative humidity percentage |
+| `temp` | DHT11, DHT22, BME280, BME680 | Temperature in degrees Celsius |
+| `humidity` | DHT11, DHT22, BME280, BME680 | Relative humidity percentage |
 | `pm1` | PMS5003, PMS7003, SPS30, SDS011 | Particulate matter 1.0 µm (µg/m³) |
 | `pm25` | PMS5003, PMS7003, SPS30, SDS011 | Particulate matter 2.5 µm (µg/m³) |
 | `pm10` | PMS5003, PMS7003, SPS30, SDS011 | Particulate matter 10 µm (µg/m³) |
 | `air_quality` | MQ-135 | Air quality index (sensor-specific units) |
 | `light` | BH1750 | Light intensity in lux |
-| `co2` | MH-Z19, SGP30 | CO₂ concentration in ppm |
-| `gas` | SGP30 | Total volatile organic compounds (TVOC) in ppb |
+| `co2` | SCD41, MH-Z19, SGP30 | CO₂ concentration in ppm |
+| `voc_index` | SGP41 | Sensirion VOC Index — relative 1–500 scale, 100 = recent daily average (lower is cleaner) |
+| `nox_index` | SGP41 | Sensirion NOx Index — relative 1–500 scale, 100 = recent daily average (lower is cleaner) |
+| `gas` | BME680, SGP30 | Raw metal-oxide gas resistance in ohms (Ω); inversely related to VOC load, not comparable across devices |
 | `carbon_monoxide` | MQ-7 | CO concentration in ppm |
 | `pressure` | BME280, BME680 | Atmospheric pressure in hPa |
 | `rain` | MH-RD | Rain intensity score from the analog output (typically 0–4000; higher = drier) |
