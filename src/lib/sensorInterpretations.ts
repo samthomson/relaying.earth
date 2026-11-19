@@ -32,6 +32,10 @@ export interface PmTierDefinition {
 }
 
 export interface InterpretationGuideSection {
+  /** Sensor types this section explains (per-value info button lookup). */
+  types?: string[];
+  /** Specific hardware model — soil probes explain each model separately. */
+  model?: string;
   title: string;
   unit?: string;
   intro: string;
@@ -134,6 +138,7 @@ function formatIndexGuideTiers(tiers: PmTierDefinition[], unit?: string) {
 
 export const SENSOR_INTERPRETATION_GUIDE: InterpretationGuideSection[] = [
   {
+    types: ['light'],
     title: 'Light',
     unit: 'lux',
     intro:
@@ -144,6 +149,7 @@ export const SENSOR_INTERPRETATION_GUIDE: InterpretationGuideSection[] = [
     ],
   },
   {
+    types: ['rain'],
     title: 'Rain',
     intro:
       'MH-RD rain sensors report a raw score from the analog output (typically 0–4095). Higher values mean drier conditions.',
@@ -157,6 +163,7 @@ export const SENSOR_INTERPRETATION_GUIDE: InterpretationGuideSection[] = [
     }),
   },
   {
+    types: ['pm1', 'pm25', 'pm10'],
     title: 'PM1.0 & PM2.5',
     unit: 'µg/m³',
     intro:
@@ -164,6 +171,7 @@ export const SENSOR_INTERPRETATION_GUIDE: InterpretationGuideSection[] = [
     tiers: formatPmGuideTiers(PM_FINE_TIERS),
   },
   {
+    types: ['co2'],
     title: 'CO₂',
     unit: 'ppm',
     intro:
@@ -171,18 +179,163 @@ export const SENSOR_INTERPRETATION_GUIDE: InterpretationGuideSection[] = [
     tiers: formatIndexGuideTiers(CO2_TIERS, 'ppm'),
   },
   {
+    types: ['voc_index'],
     title: 'VOC index',
     intro:
       'Sensirion VOC Index (SGP41): a relative 1–500 score where 100 is the recent daily average. Lower is cleaner; it measures organic gas load, not a fixed concentration.',
     tiers: formatIndexGuideTiers(SGP41_INDEX_TIERS),
   },
   {
+    types: ['nox_index'],
     title: 'NOx index',
     intro:
       'Sensirion NOx Index (SGP41): the same 1–500 relative scale for nitrogen oxides. Outdoor NOx often reads very low (1–20).',
     tiers: formatIndexGuideTiers(SGP41_INDEX_TIERS),
   },
+  {
+    types: ['soil_moisture'],
+    model: 'CAPACITIVE-V1.2',
+    title: 'Soil · CAPACITIVE-V1.2 (module)',
+    unit: 'raw 0–4095',
+    intro:
+      'Capacitive TLC555 module ("Corrosion Resistant v1.2"). Higher = drier. Its analog output tops out at 3.0 V ≈ 3720 raw, so it never reaches full scale — dry air typically reads 2300–3100. Moisture % is measured against that 3720 ceiling.',
+    tiers: [
+      { label: 'Saturated', range: '0–799' },
+      { label: 'Wet', range: '800–1799' },
+      { label: 'Moist', range: '1800–2799' },
+      { label: 'Dry', range: '2800–3719' },
+      { label: 'Very dry (module max)', range: '3720+' },
+    ],
+  },
+  {
+    types: ['soil_moisture'],
+    model: 'SOIL-METAL-1M',
+    title: 'Soil · SOIL-METAL-1M (module)',
+    unit: 'raw 0–4095',
+    intro:
+      'Metal-fork resistive module on a 1.3 m cable (LM393-style). Higher = drier across the full scale: ≈4095 means bone dry or the fork disconnected/not in soil; ≈0–200 is standing water. Moisture % is measured against 4095.',
+    tiers: [
+      { label: 'Saturated', range: '0–799' },
+      { label: 'Wet', range: '800–1799' },
+      { label: 'Moist', range: '1800–2799' },
+      { label: 'Dry', range: '2800–3799' },
+      { label: 'Very dry / disconnected', range: '3800–4095' },
+    ],
+  },
+  {
+    types: ['soil_moisture'],
+    model: 'HW-080',
+    title: 'Soil · HW-080 (bare probe + 10 kΩ divider)',
+    unit: 'raw 0–4095',
+    intro:
+      'A bare two-wire resistive fork — no electronics — read through a resistor divider, so its direction is inverted: higher = wetter. Dry air sits near 0; the very top means saturated or shorted prongs. The station energises it only ~5 ms per reading (switched excitation) so it cannot bias sibling probes sharing the pot. Moisture % is raw ÷ 4095.',
+    tiers: [
+      { label: 'Very dry (air)', range: '0–299' },
+      { label: 'Dry', range: '300–1499' },
+      { label: 'Moist', range: '1500–2999' },
+      { label: 'Wet', range: '3000–3799' },
+      { label: 'Saturated / shorted', range: '3800–4095' },
+    ],
+  },
 ];
+
+/**
+ * Soil moisture is an uncalibrated raw ADC score (0–4095). Which end means
+ * "wet" depends on the probe family: integrated modules (capacitive boards,
+ * LM393 resistive modules) read higher = drier, while a bare two-wire probe
+ * read through a resistor divider reads higher = wetter.
+ */
+export type SoilProbeFamily = 'module' | 'divider';
+
+const SOIL_DIVIDER_MODEL = /hw-?080|divider|bare/i;
+const SOIL_MODULE_MODEL = /capacitive|metal|lm393|module/i;
+
+/** Best-effort probe family from the reading's model tag, if recognisable. */
+export function soilProbeFamily(model?: string): SoilProbeFamily | null {
+  if (!model) return null;
+  if (SOIL_DIVIDER_MODEL.test(model)) return 'divider';
+  if (SOIL_MODULE_MODEL.test(model)) return 'module';
+  return null;
+}
+
+interface SoilTier {
+  label: string;
+  /** Upper bound (exclusive). */
+  maxExclusive: number;
+}
+
+/** Integrated modules (higher = drier). Bands are indicative, not calibrated. */
+const SOIL_MODULE_TIERS: SoilTier[] = [
+  { label: 'Saturated', maxExclusive: 800 },
+  { label: 'Wet', maxExclusive: 1800 },
+  { label: 'Moist', maxExclusive: 2800 },
+  { label: 'Dry', maxExclusive: 3700 },
+  { label: 'Very dry (module max)', maxExclusive: 4096 },
+];
+
+/** Bare probe through a divider (higher = wetter). */
+const SOIL_DIVIDER_TIERS: SoilTier[] = [
+  { label: 'Very dry (air)', maxExclusive: 300 },
+  { label: 'Dry', maxExclusive: 1500 },
+  { label: 'Moist', maxExclusive: 3000 },
+  { label: 'Wet', maxExclusive: 3800 },
+  { label: 'Saturated', maxExclusive: 4096 },
+];
+
+/** The capacitive module's analog out tops out at 3.0 V ≈ 3720 raw. */
+const SOIL_CAPACITIVE_MAX_RAW = 3720;
+
+/**
+ * Relative moisture as a percentage of the probe's raw scale (uncalibrated —
+ * a rough wetness indicator, not a calibrated volumetric %). Null when the
+ * model is unrecognised.
+ */
+export function getSoilMoisturePercent(value: number, model?: string): number | null {
+  const family = soilProbeFamily(model);
+  if (!family || !model) return null;
+  const maxRaw = /capacitive/i.test(model) ? SOIL_CAPACITIVE_MAX_RAW : 4095;
+  const fraction = family === 'divider' ? value / 4095 : (maxRaw - value) / maxRaw;
+  return Math.round(Math.min(1, Math.max(0, fraction)) * 100);
+}
+
+function interpretSoil(value: number, model?: string): SensorInterpretation {
+  const family = soilProbeFamily(model);
+  const tiers =
+    family === 'divider' ? SOIL_DIVIDER_TIERS
+    : family === 'module' ? SOIL_MODULE_TIERS
+    : null;
+  const percent = getSoilMoisturePercent(value, model);
+  if (!tiers) {
+    return {
+      label: percent !== null ? `≈${percent}% wet` : value < 1400 ? 'Low raw' : value < 2800 ? 'Mid raw' : 'High raw',
+      detail: `Uncalibrated raw score (0–4095); which end means wet depends on the probe model.`,
+    };
+  }
+  const tier = tiers.find((entry) => value < entry.maxExclusive) ?? tiers.at(-1)!;
+  return {
+    label: `${tier.label} · ≈${percent}% wet`,
+    detail: family === 'divider'
+      ? 'Raw 0–4095, higher = wetter (bare probe + divider). % is relative to the raw scale — indicative until calibrated for the soil.'
+      : 'Raw 0–4095, higher = drier (integrated module). % is relative to the raw scale — indicative until calibrated for the soil.',
+  };
+}
+
+/** Guide section for a sensor value, most specific match first (model > family > type). */
+export function getSensorGuideSection(
+  type: string,
+  model?: string,
+): InterpretationGuideSection | null {
+  const sections = SENSOR_INTERPRETATION_GUIDE.filter((s) => s.types?.includes(type));
+  if (sections.length === 0) return null;
+  if (model) {
+    const exact = sections.find((s) => s.model === model);
+    if (exact) return exact;
+    if (soilProbeFamily(model) === 'divider') {
+      return sections.find((s) => s.model === 'HW-080') ?? sections[0];
+    }
+  }
+  return sections[0];
+}
 
 function parseNumericValue(value: string): number | null {
   const parsed = Number.parseFloat(value);
@@ -239,10 +392,8 @@ const INTERPRETABLE_SENSORS = new Set([
   'rain',
   'pm1',
   'pm25',
-  'pm10',
-  'voc_index',
-  'nox_index',
   'co2',
+  'soil_moisture',
 ]);
 
 export const RAIN_CHART_LABELS = ['Dry', 'Damp', 'Wet', 'Raining', 'Heavy'] as const;
@@ -273,6 +424,7 @@ export function hasSensorInterpretation(type: string): boolean {
 export function getSensorInterpretation(
   type: string,
   value: string,
+  model?: string,
 ): SensorInterpretation | null {
   if (!INTERPRETABLE_SENSORS.has(type)) return null;
 
@@ -293,6 +445,8 @@ export function getSensorInterpretation(
       return classifyTiers(SGP41_INDEX_TIERS, numeric);
     case 'co2':
       return classifyTiers(CO2_TIERS, numeric);
+    case 'soil_moisture':
+      return interpretSoil(numeric, model);
     default:
       return null;
   }

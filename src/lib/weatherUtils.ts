@@ -227,6 +227,7 @@ export function getSensorName(type: string): string {
     carbon_monoxide: 'Carbon Monoxide',
     pressure: 'Pressure',
     rain: 'Rain',
+    soil_moisture: 'Soil Moisture',
   };
   return names[type] || type;
 }
@@ -248,6 +249,7 @@ export function getSensorShortName(type: string): string {
     carbon_monoxide: 'CO',
     pressure: 'Press',
     rain: 'Rain',
+    soil_moisture: 'Soil',
   };
   return names[type] || type;
 }
@@ -268,6 +270,7 @@ export const SENSOR_COLUMN_ORDER = [
   'nox_index',
   'gas',
   'carbon_monoxide',
+  'soil_moisture',
 ] as const;
 
 export function sortSensorTypes(types: Iterable<string>): string[] {
@@ -277,6 +280,69 @@ export function sortSensorTypes(types: Iterable<string>): string[] {
   return [...new Set(types)].sort(
     (a, b) => (order.get(a) ?? 999) - (order.get(b) ?? 999),
   );
+}
+
+/**
+ * A table column identity: a sensor type, plus the hardware model when more
+ * than one physical sensor reports that type (e.g. three soil probes all
+ * publishing `soil_moisture`). Single-model types render exactly as before.
+ */
+export interface SensorColumn {
+  type: string;
+  /** Only set when the type is reported by multiple distinct models. */
+  model?: string;
+}
+
+/** Stable React key for a column. */
+export function sensorColumnKey(column: SensorColumn): string {
+  return column.model ? `${column.type}::${column.model}` : column.type;
+}
+
+/** True when the reading belongs to the column. */
+export function matchSensorColumn(
+  reading: { type: string; model?: string },
+  column: SensorColumn,
+): boolean {
+  if (reading.type !== column.type) return false;
+  if (!column.model) return true;
+  return reading.model?.trim() === column.model;
+}
+
+/** Column header: short type label, with the model when the type is multi-sensor. */
+export function getSensorColumnLabel(column: SensorColumn): string {
+  return column.model
+    ? `${getSensorShortName(column.type)} · ${column.model}`
+    : getSensorShortName(column.type);
+}
+
+/**
+ * Distinct (type, model) columns across rows of readings, in preferred sensor
+ * order (models alphabetical within a type). The `model` discriminator is only
+ * attached when a type appears with more than one distinct model.
+ */
+export function getSensorColumns(
+  rows: Iterable<Array<{ type: string; model?: string }>>,
+): SensorColumn[] {
+  const modelsByType = new Map<string, Set<string>>();
+  for (const row of rows) {
+    for (const reading of row) {
+      const models = modelsByType.get(reading.type) ?? new Set<string>();
+      const model = reading.model?.trim();
+      if (model) models.add(model);
+      modelsByType.set(reading.type, models);
+    }
+  }
+  const columns: SensorColumn[] = [];
+  for (const type of sortSensorTypes(modelsByType.keys())) {
+    const models = [...(modelsByType.get(type) ?? new Set<string>())].sort();
+    for (const model of models) {
+      columns.push(models.length > 1 ? { type, model } : { type });
+    }
+    if (models.length === 0) {
+      columns.push({ type });
+    }
+  }
+  return columns;
 }
 
 /**
@@ -298,6 +364,7 @@ export function getSensorUnit(type: string): string {
     carbon_monoxide: 'ppm',
     pressure: 'hPa',
     rain: '',
+    soil_moisture: '',
   };
   return units[type] || '';
 }

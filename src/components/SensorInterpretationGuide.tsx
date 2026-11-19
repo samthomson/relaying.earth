@@ -12,6 +12,7 @@ import {
 import {
   getSensorIndicatorClass,
   SENSOR_INTERPRETATION_GUIDE,
+  type InterpretationGuideSection,
 } from '@/lib/sensorInterpretations';
 import { cn } from '@/lib/utils';
 
@@ -41,50 +42,63 @@ export function SensorInterpretationGuide({ className }: SensorInterpretationGui
             below are applied automatically from each reading.
           </DialogDescription>
         </DialogHeader>
-
         <div className="space-y-6">
           {SENSOR_INTERPRETATION_GUIDE.map((section) => (
-            <section key={section.title}>
-              <h3 className="font-display text-sm font-semibold text-foreground">
-                {section.title}
-                {section.unit && (
-                  <span className="ml-1.5 font-mono text-xs font-normal text-muted-foreground">
-                    ({section.unit})
-                  </span>
-                )}
-              </h3>
-              <p className="mt-1 text-sm text-muted-foreground">{section.intro}</p>
-              <ul className="mt-3 space-y-2">
-                {section.tiers.map((tier) => (
-                  <li
-                    key={`${section.title}-${tier.label}`}
-                    className="flex items-start gap-2.5 rounded-md border border-border/60 bg-muted/30 px-3 py-2"
-                  >
-                    {tier.indicator ? (
-                      <span
-                        className={cn(
-                          'mt-1 h-2 w-2 shrink-0 rounded-full',
-                          getSensorIndicatorClass(tier.indicator),
-                        )}
-                        aria-hidden
-                      />
-                    ) : (
-                      <span
-                        className="mt-1 h-2 w-2 shrink-0 rounded-full bg-muted-foreground/40"
-                        aria-hidden
-                      />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-foreground">{tier.label}</div>
-                      <div className="font-mono text-xs text-muted-foreground">{tier.range}</div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <GuideSectionView key={section.title} section={section} />
           ))}
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+export function GuideSectionView({
+  section,
+  showTitle = true,
+}: {
+  section: InterpretationGuideSection;
+  showTitle?: boolean;
+}) {
+  return (
+    <section>
+      {showTitle && (
+        <h3 className="font-display text-sm font-semibold text-foreground">
+          {section.title}
+          {section.unit && (
+            <span className="ml-1.5 font-mono text-xs font-normal text-muted-foreground">
+              ({section.unit})
+            </span>
+          )}
+        </h3>
+      )}
+      <p className="mt-1 text-sm text-muted-foreground">{section.intro}</p>
+      <ul className="mt-3 space-y-2">
+        {section.tiers.map((tier) => (
+          <li
+            key={`${section.title}-${tier.label}`}
+            className="flex items-start gap-2.5 rounded-md border border-border/60 bg-muted/30 px-3 py-2"
+          >
+            {tier.indicator ? (
+              <span
+                className={cn(
+                  'mt-1 h-2 w-2 shrink-0 rounded-full',
+                  getSensorIndicatorClass(tier.indicator),
+                )}
+                aria-hidden
+              />
+            ) : (
+              <span
+                className="mt-1 h-2 w-2 shrink-0 rounded-full bg-muted-foreground/40"
+                aria-hidden
+              />
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-medium text-foreground">{tier.label}</div>
+              <div className="font-mono text-xs text-muted-foreground">{tier.range}</div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

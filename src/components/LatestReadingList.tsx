@@ -89,7 +89,7 @@ function ReadingRow({
   formatSensorValue,
   compact = false,
 }: {
-  reading: { type: string; value: string };
+  reading: { type: string; value: string; model?: string };
   formatSensorValue: (type: string, value: string) => string;
   compact?: boolean;
 }) {
@@ -102,6 +102,7 @@ function ReadingRow({
         type={reading.type}
         value={reading.value}
         formattedValue={formatSensorValue(reading.type, reading.value)}
+        model={reading.model}
         variant="inline"
       />
     </li>

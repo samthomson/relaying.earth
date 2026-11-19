@@ -9,19 +9,26 @@ import {
   formatAbsoluteTime,
   formatRelativeTime,
 } from '@/lib/timeUtils';
-import { getSensorShortName, sortSensorTypes } from '@/lib/weatherUtils';
+import {
+  getSensorColumnLabel,
+  getSensorColumns,
+  getSensorShortName,
+  matchSensorColumn,
+  sensorColumnKey,
+  type SensorColumn,
+} from '@/lib/weatherUtils';
 import { cn } from '@/lib/utils';
 
 export interface ReadingTableRow {
   id: string;
   timestamp?: number;
-  readings: Array<{ type: string; value: string }>;
+  readings: Array<{ type: string; value: string; model?: string }>;
   eventId?: string;
 }
 
 interface ReadingsTableProps {
   rows: ReadingTableRow[];
-  sensorTypes?: string[];
+  sensorColumns?: SensorColumn[];
   /** `grid` for latest-reading cards; `events` for responsive event history. */
   layout?: 'grid' | 'events';
   className?: string;
@@ -45,26 +52,39 @@ function ReadingGrid({
   readings,
   className,
 }: {
-  readings: Array<{ type: string; value: string }>;
+  readings: Array<{ type: string; value: string; model?: string }>;
   className?: string;
 }) {
   const { formatSensorValue } = useWeatherFormatters();
 
+  // Within one event, disambiguate same-type readings with their model.
+  const typeCounts = new Map<string, number>();
+  for (const reading of readings) {
+    typeCounts.set(reading.type, (typeCounts.get(reading.type) ?? 0) + 1);
+  }
+
   return (
     <div className={cn('grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3', className)}>
-      {readings.map((reading, idx) => (
-        <div key={`${reading.type}-${idx}`}>
-          <div className="mb-1 text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
-            {getSensorShortName(reading.type)}
+      {readings.map((reading, idx) => {
+        const showModel =
+          (typeCounts.get(reading.type) ?? 0) > 1 && reading.model?.trim();
+        return (
+          <div key={`${reading.type}-${reading.model ?? ''}-${idx}`}>
+            <div className="mb-1 text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+              {showModel
+                ? `${getSensorShortName(reading.type)} · ${reading.model}`
+                : getSensorShortName(reading.type)}
+            </div>
+            <SensorReadingValue
+              type={reading.type}
+              value={reading.value}
+              model={reading.model}
+              formattedValue={formatSensorValue(reading.type, reading.value)}
+              variant="stacked"
+            />
           </div>
-          <SensorReadingValue
-            type={reading.type}
-            value={reading.value}
-            formattedValue={formatSensorValue(reading.type, reading.value)}
-            variant="stacked"
-          />
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -104,11 +124,11 @@ function EventCards({ rows, now }: { rows: ReadingTableRow[]; now: Date }) {
 
 function EventTable({
   rows,
-  sensorTypes,
+  columns,
   now,
 }: {
   rows: ReadingTableRow[];
-  sensorTypes: string[];
+  columns: SensorColumn[];
   now: Date;
 }) {
   const { formatSensorValue } = useWeatherFormatters();
@@ -119,9 +139,9 @@ function EventTable({
         <thead>
           <tr className="border-b border-border/60 text-left text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
             <th className="py-2 pr-4 font-normal whitespace-nowrap">When</th>
-            {sensorTypes.map((type) => (
-              <th key={type} className="py-2 pr-4 font-normal whitespace-nowrap">
-                {getSensorShortName(type)}
+            {columns.map((column) => (
+              <th key={sensorColumnKey(column)} className="py-2 pr-4 font-normal whitespace-nowrap">
+                {getSensorColumnLabel(column)}
               </th>
             ))}
             <th className="w-16 py-2 pl-2 font-normal text-center">Event</th>
@@ -150,17 +170,18 @@ function EventTable({
                   '—'
                 )}
               </td>
-              {sensorTypes.map((type) => {
-                const reading = row.readings.find((r) => r.type === type);
+              {columns.map((column) => {
+                const reading = row.readings.find((r) => matchSensorColumn(r, column));
                 return (
                   <td
-                    key={`${row.id}-${type}`}
+                    key={`${row.id}-${sensorColumnKey(column)}`}
                     className="py-2.5 pr-4 align-top whitespace-nowrap"
                   >
                     {reading ? (
                       <SensorReadingValue
                         type={reading.type}
                         value={reading.value}
+                        model={reading.model}
                         formattedValue={formatSensorValue(reading.type, reading.value)}
                         variant="stacked"
                       />
@@ -185,7 +206,7 @@ function EventTable({
 
 export function ReadingsTable({
   rows,
-  sensorTypes: fixedSensorTypes,
+  sensorColumns: fixedSensorColumns,
   layout = 'grid',
   className,
   now: sharedNow,
@@ -193,14 +214,12 @@ export function ReadingsTable({
   // Fallback for pages that don't pass a clock; 1s cadence keeps "Xs ago" smooth.
   const ownNow = useNow(1000);
   const now = sharedNow ?? ownNow;
-  const sensorTypes = useMemo(() => {
-    if (fixedSensorTypes && fixedSensorTypes.length > 0) {
-      return sortSensorTypes(fixedSensorTypes);
+  const columns = useMemo(() => {
+    if (fixedSensorColumns && fixedSensorColumns.length > 0) {
+      return fixedSensorColumns;
     }
-    const types = new Set<string>();
-    rows.forEach((row) => row.readings.forEach((r) => types.add(r.type)));
-    return sortSensorTypes(types);
-  }, [rows, fixedSensorTypes]);
+    return getSensorColumns(rows.map((row) => row.readings));
+  }, [rows, fixedSensorColumns]);
 
   if (rows.length === 0) return null;
 
@@ -215,7 +234,7 @@ export function ReadingsTable({
   return (
     <div className={className}>
       <EventCards rows={rows} now={now} />
-      <EventTable rows={rows} sensorTypes={sensorTypes} now={now} />
+      <EventTable rows={rows} columns={columns} now={now} />
     </div>
   );
 }

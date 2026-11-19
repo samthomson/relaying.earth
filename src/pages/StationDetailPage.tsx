@@ -34,6 +34,7 @@ import { SensorInterpretationGuide } from '@/components/SensorInterpretationGuid
 import { StationLocalTimePanel } from '@/components/StationLocalTimePanel';
 import {
   decodeGeohash,
+  getSensorColumns,
   groupStationSensors,
 } from '@/lib/weatherUtils';
 import { getStationCoordinates, getStationTimezone } from '@/lib/stationTime';
@@ -128,6 +129,14 @@ const StationDetailPage = () => {
     source.forEach((reading) => reading.readings.forEach((r) => set.add(r.type)));
     return Array.from(set);
   }, [chartReadings, readings]);
+
+  const sensorColumns = useMemo(
+    () =>
+      getSensorColumns(
+        (chartReadings ?? readings ?? []).map((reading) => reading.readings),
+      ),
+    [chartReadings, readings],
+  );
 
   const latestReading = readings?.[0];
 
@@ -425,7 +434,7 @@ const StationDetailPage = () => {
                         readings: reading.readings,
                         eventId: reading.event.id,
                       }))}
-                      sensorTypes={sensorTypes}
+                      sensorColumns={sensorColumns}
                     />
                     {eventRows.length > shownEventRows.length && (
                       <div className="mt-4 flex items-center justify-between gap-3">

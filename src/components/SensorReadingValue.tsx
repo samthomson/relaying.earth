@@ -5,11 +5,14 @@ import {
   getSensorTextClass,
   type SensorInterpretation,
 } from '@/lib/sensorInterpretations';
+import { SensorInfoButton } from '@/components/SensorInfoButton';
 
 interface SensorReadingValueProps {
   type: string;
   value: string;
   formattedValue: string;
+  /** Hardware model — disambiguates same-type sensors (e.g. soil probes). */
+  model?: string;
   /** `stacked` — value with label below; `inline` — right-aligned list cell. */
   variant?: 'stacked' | 'inline';
   className?: string;
@@ -19,10 +22,11 @@ export function SensorReadingValue({
   type,
   value,
   formattedValue,
+  model,
   variant = 'stacked',
   className,
 }: SensorReadingValueProps) {
-  const interpretation = getSensorInterpretation(type, value);
+  const interpretation = getSensorInterpretation(type, value, model);
 
   if (variant === 'inline') {
     if (!interpretation) {
@@ -34,7 +38,7 @@ export function SensorReadingValue({
     }
 
     return (
-      <span className={cn('inline-flex flex-col items-end gap-0.5', className)}>
+      <span className={cn('group inline-flex flex-col items-end gap-0.5', className)}>
         <span
           className={cn(
             'font-semibold tabular-nums',
@@ -45,13 +49,16 @@ export function SensorReadingValue({
         >
           {formattedValue}
         </span>
-        <SensorInterpretationBadge interpretation={interpretation} />
+        <span className="inline-flex items-center gap-1">
+          <SensorInterpretationBadge interpretation={interpretation} />
+          <SensorInfoButton type={type} model={model} />
+        </span>
       </span>
     );
   }
 
   return (
-    <div className={cn('space-y-1', className)}>
+    <div className={cn('group space-y-1', className)}>
       <div
         className={cn(
           'text-sm font-semibold tabular-nums leading-none',
@@ -62,10 +69,11 @@ export function SensorReadingValue({
       >
         {formattedValue}
       </div>
-      <div className="min-h-[14px]">
+      <div className="flex min-h-[14px] items-center gap-1">
         {interpretation && (
           <SensorInterpretationBadge interpretation={interpretation} />
         )}
+        <SensorInfoButton type={type} model={model} />
       </div>
     </div>
   );
